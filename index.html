@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Barzilovica Layered Garden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#efe9dc;--ink:#2c2a24;--muted:#6f6a5d;--line:rgba(44,42,36,.55);--chip:rgba(251,248,240,.93)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#efe9dc;--ink:#2c2a24}}
+  html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+  canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #over{position:fixed;inset:0;pointer-events:none}
+  #lines{position:absolute;inset:0;width:100%;height:100%}
+  .lab{position:absolute;background:var(--chip);border:1px solid rgba(44,42,36,.16);border-radius:5px;padding:3px 8px;font-size:12.5px;font-weight:500;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12);transform:translate(-50%,-50%)}
+  .lab small{display:block;font-weight:400;font-size:10.5px;color:var(--muted)}
+  #title{position:absolute;left:32px;top:26px}
+  #title h1{font:600 30px/1.1 Fraunces,Georgia,serif;margin:0}
+  #title p{margin:6px 0 0;font-size:13px;color:var(--muted);max-width:380px;line-height:1.4}
+  #north{position:absolute;right:36px;top:30px;width:64px;height:64px}
+  #note{position:absolute;left:32px;bottom:22px;font-size:11.5px;color:var(--muted);max-width:560px;line-height:1.45}
+  #views{position:absolute;right:32px;bottom:22px;display:flex;gap:6px;pointer-events:auto}
+  #views button{font:500 12.5px Inter,sans-serif;background:var(--chip);border:1px solid rgba(44,42,36,.25);border-radius:5px;padding:6px 10px;cursor:pointer;color:var(--ink);min-height:32px}
+  #views button:hover{background:#fff}
+
+  #panel{position:absolute;left:32px;bottom:22px;width:340px;max-width:calc(100vw - 64px);background:var(--chip);border:1px solid rgba(44,42,36,.16);border-radius:7px;padding:10px 13px;font-size:12px;line-height:1.42;pointer-events:auto;box-shadow:0 1px 4px rgba(0,0,0,.12);max-height:44vh;overflow:auto}
+  #panel h2{margin:0 0 5px;font:600 12.5px Inter,sans-serif}
+  #nowT span{display:inline-block;margin:1px 10px 1px 0;white-space:nowrap}#nowT i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;box-shadow:inset 0 0 0 1px rgba(44,42,36,.28)}
+  #panel details{margin-top:8px;border-top:1px solid rgba(44,42,36,.14);padding-top:7px}#panel summary{cursor:pointer;font-weight:600}
+  #panel table{width:100%;border-collapse:collapse;margin-top:5px}#panel td{padding:1.5px 0;vertical-align:top}#panel td:first-child{font-weight:500}#panel td:last-child{text-align:right;color:var(--muted);padding-left:8px}#panel td small{display:block;color:var(--muted);font-weight:400}
+  #ctl{position:absolute;right:32px;bottom:22px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:auto}
+  #ctl>div,#ctl #views{position:static;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  #ctl button{font:500 12.5px Inter,sans-serif;background:var(--chip);border:1px solid rgba(44,42,36,.25);border-radius:5px;padding:6px 10px;cursor:pointer;color:var(--ink);min-height:32px}
+  #ctl button:hover{background:#fff}#ctl button.on{background:#2c2a24;color:#fbf8f0;border-color:#2c2a24}
+  .lab.mini{font-size:10.5px;padding:1px 5px}
+  .closeview .lab,.closeview #lines,.closeview #title p{display:none}.closeview #title{background:var(--chip);border-radius:6px;padding:6px 12px}.closeview #title h1{font-size:22px}
+  .export #ctl{display:none}.nopanel #panel{display:none}
+  @media (max-width:700px){#panel{display:none}#ctl{left:16px;right:16px;bottom:14px;align-items:stretch}#ctl>div,#ctl #views{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto}#ctl button{white-space:nowrap;flex:none}}
+  .nolabels .lab,.nolabels #lines{display:none}
+  @media (max-width:700px){#title{left:16px;top:14px}#title h1{font-size:22px}#title p,#note{display:none}#views{right:16px;left:16px;bottom:14px;flex-wrap:wrap}#north{right:16px;top:14px;width:48px;height:48px}.lab{font-size:10.5px}.lab small{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="over">
+  <svg id="lines"></svg>
+  <div id="labels"></div>
+  <div id="title"><h1>Option A, version 2</h1><p>Open lawn around the house, a layered flower garden at the fountain, trees on the slope and colour along the orchard fence. Shown <span id="yr">10</span> years after planting.</p></div>
+  <svg id="north" viewBox="-32 -32 64 64"><g id="northG"><path d="M0-24 7 6 0 1-7 6Z" fill="#2c2a24"/><text x="0" y="20" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#2c2a24">N</text></g></svg>
+  <div id="panel"><h2 id="nowH">In flower or colour now</h2><div id="nowT"></div><details><summary>Full plant list</summary><table><tr><td>Red maple<small>Acer rubrum 'October Glory'</small></td><td>3</td></tr><tr><td>Sweetgum<small>Liquidambar styraciflua</small></td><td>2</td></tr><tr><td>Ginkgo<small>Ginkgo biloba</small></td><td>1</td></tr><tr><td>Columnar hornbeam<small>Carpinus betulus 'Frans Fontaine'</small></td><td>3</td></tr><tr><td>Serbian spruce<small>Picea omorika</small></td><td>2</td></tr><tr><td>Eastern redbud<small>Cercis canadensis</small></td><td>2</td></tr><tr><td>Serviceberry<small>Amelanchier lamarckii</small></td><td>1</td></tr><tr><td>Purple-leaf plum<small>Prunus cerasifera 'Nigra'</small></td><td>1</td></tr><tr><td>Smoke bush<small>Cotinus coggygria 'Royal Purple'</small></td><td>1</td></tr><tr><td>Seven-son flower<small>Heptacodium miconioides</small></td><td>1</td></tr><tr><td>Lilac, deep purple<small>Syringa vulgaris 'Charles Joly'</small></td><td>2</td></tr><tr><td>Lilac, white<small>Syringa vulgaris 'Madame Lemoine'</small></td><td>2</td></tr><tr><td>Lilac, magenta-pink<small>Syringa vulgaris 'Sensation'</small></td><td>2</td></tr><tr><td>Panicle hydrangea<small>Hydrangea paniculata 'Limelight'</small></td><td>3</td></tr><tr><td>Sedum<small>Hylotelephium 'Herbstfreude'</small></td><td>patches</td></tr><tr><td>Lavender<small>Lavandula angustifolia</small></td><td>patches</td></tr><tr><td>Woodland sage<small>Salvia nemorosa</small></td><td>patches</td></tr><tr><td>Coneflower<small>Echinacea purpurea</small></td><td>patches</td></tr><tr><td>Black-eyed Susan<small>Rudbeckia fulgida</small></td><td>patches</td></tr><tr><td>Autumn aster<small>Symphyotrichum novae-angliae</small></td><td>patches</td></tr><tr><td>Tulips and daffodils<small>Tulipa, Narcissus</small></td><td>patches</td></tr><tr><td>Fountain grass<small>Pennisetum alopecuroides</small></td><td>patches</td></tr><tr><td>Sweet cherry<small>on Gisela 6</small></td><td>2</td></tr><tr><td>Sour cherry<small>on Gisela 5 or Mahaleb</small></td><td>2</td></tr><tr><td>Plum<small>on St Julien A</small></td><td>3</td></tr><tr><td>Apple<small>on M26 or MM106</small></td><td>2</td></tr><tr><td>Pear<small>on Quince A</small></td><td>2</td></tr><tr><td>Quince<small>on Quince A</small></td><td>2</td></tr><tr><td>Apricot<small>on Myrobalan</small></td><td>2</td></tr></table></details><details><summary>Modular home: Scandic Standard</summary>Wall Concept, 55 m² in total: 36 m² closed and a 19 m² covered terrace, 8.7 × 6.3 m, 5.4 t, on concrete footings. Listed at 18,500 EUR + VAT, assembly 2,500 EUR. Model built from the maker's floor plan and photos. The roof height is my estimate, the maker does not publish one.</details><details><summary>How this was made</summary>House from your floor plans. Plot, old trees and outbuildings from the satellite map, about ±1-2 m. Plant sizes are my estimates for year 10, and ground levels are estimated from photos, not surveyed. Colours show a typical year.</details></div>
+  <div id="ctl"><div id="years"><button data-y="10">Year 10</button><button data-y="20">Year 20</button></div><div id="seasons"><button data-s="spring">Spring</button><button data-s="summer">Summer</button><button data-s="autumn">Autumn</button><button data-s="winter">Winter</button></div><div id="views"><button data-v="close">Garden close-up</button><button data-v="hv">Home close-up</button><button data-v="n">Over the garden</button><button data-v="e">Front of the house</button><button data-v="se">From the south-east</button><button data-v="ne">From the orchard</button><button data-v="sw">From the sunset side</button><button data-v="top">Top down</button></div><div><button id="hm">Modular home</button><button id="tl">Labels</button></div></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const OPT={"sp":{"spruce":{"ht":9,"wd":3,"ht20":14,"wd20":3.5,"form":"cone","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#2f5a44","#3a6a4c"],"f":[],"ff":0,"d":1},"summer":{"c":["#25503e","#2f5a44"],"f":[],"ff":0,"d":1},"autumn":{"c":["#25503e","#2f5a44"],"f":[],"ff":0,"d":1},"winter":{"c":["#24483c","#2c5244"],"f":[],"ff":0,"d":1}}},"sweet":{"ht":4.5,"wd":4,"ht20":6,"wd20":6,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbfaf0","#f4f2e4"],"ff":0.85,"d":1},"summer":{"c":["#2c5228","#365e2a","#264a24"],"f":[],"ff":0,"d":1},"autumn":{"c":["#d8541e","#c83c1e","#e88a24"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"sour":{"ht":3.5,"wd":3.5,"ht20":4.5,"wd20":4.5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbfaf0","#f4f2e4"],"ff":0.85,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e0a824","#d8741e"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"maple":{"ht":9,"wd":6,"ht20":13,"wd20":9,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#8fa04a","#a8743a","#7c9a42"],"f":[],"ff":0,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#c8201c","#e0312a","#a81a1e","#d9401f"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"quince":{"ht":3.5,"wd":3.5,"ht20":4.5,"wd20":4.5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbdce0","#f7ccd4"],"ff":0.35,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#d8b82c","#c8a428"],"f":["#f0d030"],"ff":0.12,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"amelanchier":{"ht":4.5,"wd":3.5,"ht20":6,"wd20":5,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#a8904a"],"f":["#fbf8ee","#f4f0e0"],"ff":0.85,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e8541e","#d9361e","#f08a24"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"sweetgum":{"ht":9,"wd":5.5,"ht20":13,"wd20":8,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":1},"summer":{"c":["#2c5228","#365e2a","#264a24"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e8701c","#d63a1e","#f0a020","#9a1e30"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"prunus":{"ht":6,"wd":5,"ht20":7,"wd20":6.5,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#5c2438"],"f":["#f4b8cc","#f9d0dc"],"ff":0.75,"d":1},"summer":{"c":["#4e1f34","#5c2438","#44182c"],"f":[],"ff":0,"d":1},"autumn":{"c":["#7a2c34","#92402c","#5c2438"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"sedum":{"ht":0.55,"wd":0,"ht20":0.55,"wd20":0,"form":"ground","group":"perennial","dens":40,"kind":"tree","pal":{"spring":{"c":["#7fa068","#8ca874"],"f":[],"ff":0,"d":1},"summer":{"c":["#7fa068","#8ca874"],"f":["#b6c490"],"ff":0.3,"d":1},"autumn":{"c":["#6f8a58"],"f":["#b83a5c","#a02c50","#c84e68"],"ff":0.8,"d":1},"winter":{"c":["#6a4a34"],"f":[],"ff":0,"d":0.35}}},"hydrangea":{"ht":2,"wd":2,"ht20":2.5,"wd20":2.5,"form":"shrub","group":"shrub","dens":0,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":1},"summer":{"c":["#4a7a38"],"f":["#f2f4d4","#e6eec0","#fbfbe8"],"ff":0.6,"d":1},"autumn":{"c":["#6a7a3c"],"f":["#e0a4ac","#d48c9c","#eec4c0"],"ff":0.55,"d":1},"winter":{"c":["#a08a60"],"f":[],"ff":0,"d":0.12}}},"lilacM":{"ht":3,"wd":2.6,"ht20":3.5,"wd20":3.5,"form":"shrub","group":"shrub","dens":0,"kind":"tree","pal":{"spring":{"c":["#3f6a2c","#4a7630","#355e28"],"f":["#b04aa8","#c462b8","#9c3c9c"],"ff":0.6,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#7a8a3c","#8a8a3c"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"lilacW":{"ht":3,"wd":2.6,"ht20":3.5,"wd20":3.5,"form":"shrub","group":"shrub","dens":0,"kind":"tree","pal":{"spring":{"c":["#3f6a2c","#4a7630","#355e28"],"f":["#fbfaf2","#f2efe2"],"ff":0.6,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#7a8a3c","#8a8a3c"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"rudbeckia":{"ht":0.65,"wd":0,"ht20":0.65,"wd20":0,"form":"ground","group":"perennial","dens":36,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":0.4},"summer":{"c":["#4a7a38"],"f":["#f2b81e","#eaa818","#f7c834"],"ff":0.6,"d":1},"autumn":{"c":["#5a6a30"],"f":["#e8a81e","#3a2a1c"],"ff":0.35,"d":0.7},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"grass":{"ht":1.1,"wd":0,"ht20":1.1,"wd20":0,"form":"blade","group":"perennial","dens":28,"kind":"tree","pal":{"spring":{"c":["#7fa84c"],"f":[],"ff":0,"d":0.25},"summer":{"c":["#5f9440","#6fa048"],"f":[],"ff":0,"d":1},"autumn":{"c":["#d8b45c","#c8a048","#e6c878"],"f":[],"ff":0,"d":1},"winter":{"c":["#c0a878","#b09868"],"f":[],"ff":0,"d":0.7}}},"echinacea":{"ht":0.75,"wd":0,"ht20":0.75,"wd20":0,"form":"ground","group":"perennial","dens":36,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":0.4},"summer":{"c":["#4a7a38"],"f":["#d8589c","#c84a8c","#e070ac"],"ff":0.5,"d":1},"autumn":{"c":["#6a5a30"],"f":["#3a2a1c"],"ff":0.4,"d":0.6},"winter":{"c":["#3a2e20"],"f":[],"ff":0,"d":0.15}}},"plum":{"ht":4,"wd":3.8,"ht20":5,"wd20":5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbfbf2","#eef0e0"],"ff":0.9,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#b8862c","#94622c","#c8a030"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"bulbs":{"ht":0.4,"wd":0,"ht20":0.4,"wd20":0,"form":"ground","group":"perennial","dens":44,"kind":"tree","pal":{"spring":{"c":["#5f9a48"],"f":["#e8321e","#f7c81e","#fbf6e8","#e8508c"],"ff":0.7,"d":1},"summer":{"c":["#000000"],"f":[],"ff":0,"d":0},"autumn":{"c":["#000000"],"f":[],"ff":0,"d":0},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"ginkgo":{"ht":7,"wd":4,"ht20":11,"wd20":6,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#8fb24c","#a0bc58"],"f":[],"ff":0,"d":1},"summer":{"c":["#4f8a3a","#5c9440"],"f":[],"ff":0,"d":1},"autumn":{"c":["#f2c81e","#f7d634","#e8ba18"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"apricot":{"ht":4,"wd":4,"ht20":5,"wd20":5.5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#8a7a50"],"f":["#fbe4e0","#f7d0d0","#fdf2ec"],"ff":0.9,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e88a24","#d86c1e","#eab028"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"lavender":{"ht":0.55,"wd":0,"ht20":0.55,"wd20":0,"form":"ground","group":"perennial","dens":40,"kind":"tree","pal":{"spring":{"c":["#8fa488","#9cb094"],"f":[],"ff":0,"d":1},"summer":{"c":["#8fa488"],"f":["#7a5cc4","#6a4cb4","#8a6cd0"],"ff":0.75,"d":1},"autumn":{"c":["#8fa488","#9cb094"],"f":[],"ff":0,"d":1},"winter":{"c":["#808c78"],"f":[],"ff":0,"d":0.8}}},"apple":{"ht":3.5,"wd":3.5,"ht20":4.5,"wd20":5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbe4e8","#f7c8d4","#fdf4f0"],"ff":0.8,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":["#9ab03c"],"ff":0.03,"d":1},"autumn":{"c":["#a8a038","#8a8c34"],"f":["#c8281e","#d83c24"],"ff":0.1,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"lilacP":{"ht":3,"wd":2.6,"ht20":3.5,"wd20":3.5,"form":"shrub","group":"shrub","dens":0,"kind":"tree","pal":{"spring":{"c":["#3f6a2c","#4a7630","#355e28"],"f":["#6a3a9c","#7c48ac","#5a2e8c"],"ff":0.6,"d":1},"summer":{"c":["#3f6a2c","#4a7630","#355e28"],"f":[],"ff":0,"d":1},"autumn":{"c":["#7a8a3c","#8a8a3c"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"pear":{"ht":4,"wd":3,"ht20":5.5,"wd20":4.5,"form":"round","group":"fruit","dens":0,"kind":"fruit","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#fbfbf0","#f2f2e0"],"ff":0.85,"d":1},"summer":{"c":["#2c5228","#365e2a","#264a24"],"f":[],"ff":0,"d":1},"autumn":{"c":["#a83024","#8c2a28","#c85c24"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"aster":{"ht":0.85,"wd":0,"ht20":0.85,"wd20":0,"form":"ground","group":"perennial","dens":36,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":0.3},"summer":{"c":["#4f8040","#5a8a44"],"f":[],"ff":0,"d":1},"autumn":{"c":["#4a6a38"],"f":["#7a48c8","#8c5cd8","#6a3cb8"],"ff":0.75,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"cotinus":{"ht":3.5,"wd":3,"ht20":4,"wd20":4,"form":"vase","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#5a2a44","#6a3048"],"f":[],"ff":0,"d":1},"summer":{"c":["#4c2038","#5a2a44"],"f":["#d8a8b8","#e4bcc8"],"ff":0.22,"d":1},"autumn":{"c":["#d8441e","#b82a24","#e87a20"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"heptacodium":{"ht":4.5,"wd":3.5,"ht20":6,"wd20":4.5,"form":"vase","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":1},"summer":{"c":["#4a7a36","#558440"],"f":[],"ff":0,"d":1},"autumn":{"c":["#5c7a38"],"f":["#fbf6e8","#e8a0a8","#d8708c"],"ff":0.55,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"redbud":{"ht":5,"wd":5,"ht20":6.5,"wd20":7,"form":"round","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":["#d8418f","#e65aa4","#c9307f"],"ff":1,"d":0.8},"summer":{"c":["#3f7a38","#4a8440"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e4bb2c","#d2a624","#eccb4a"],"f":[],"ff":0,"d":1},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"salvia":{"ht":0.55,"wd":0,"ht20":0.55,"wd20":0,"form":"ground","group":"perennial","dens":40,"kind":"tree","pal":{"spring":{"c":["#4f8a40"],"f":["#4c3cb4","#5c48c4"],"ff":0.55,"d":1},"summer":{"c":["#4f8a40"],"f":["#4c3cb4","#5c48c4"],"ff":0.5,"d":1},"autumn":{"c":["#5a7a3c"],"f":[],"ff":0,"d":0.7},"winter":{"c":["#000000"],"f":[],"ff":0,"d":0}}},"column":{"ht":9,"wd":2.6,"ht20":13,"wd20":3.5,"form":"column","group":"tree","dens":0,"kind":"tree","pal":{"spring":{"c":["#6f9a3c","#83ad48","#5d8a34"],"f":[],"ff":0,"d":1},"summer":{"c":["#2c5228","#365e2a","#264a24"],"f":[],"ff":0,"d":1},"autumn":{"c":["#e0b022","#c99a1e","#a8a02c","#d8a820"],"f":[],"ff":0,"d":1},"winter":{"c":["#9a7a4a","#8a6c40"],"f":[],"ff":0,"d":0.25}}}},"plants":[["maple",712,625],["maple",715,838],["column",746,598],["column",748,655],["sweetgum",726,772],["redbud",665,638],["spruce",748,858],["maple",490,848],["ginkgo",552,858],["prunus",432,852],["redbud",478,602],["lilacP",515,592],["lilacP",660,586],["lilacW",540,591],["lilacW",686,585],["lilacM",565,590],["heptacodium",632,625],["sweetgum",402,622],["column",350,600],["spruce",445,608],["lilacM",378,592],["amelanchier",384,795],["cotinus",359,770],["hydrangea",700,712],["hydrangea",704,742],["hydrangea",690,770]],"fruit":[["apricot",330,310],["apricot",388,310],["sweet",448,310],["sweet",511,310],["pear",567,310],["plum",415,388],["plum",470,388],["plum",525,388],["apple",442,438],["apple",497,438],["pear",552,438],["sour",418,532],["sour",467,532],["quince",516,532],["quince",565,532]],"drifts":[{"sp":"lavender","px":655,"py":733,"r0":25,"r1":33,"a0":-2.792526803190927,"a1":-0.6981317007977318,"shape":"ring","y":0},{"sp":"sedum","px":655,"py":733,"r0":25,"r1":33,"a0":-0.6981317007977318,"a1":1.0471975511965976,"shape":"ring","y":0},{"sp":"lavender","px":655,"py":733,"r0":25,"r1":33,"a0":1.0471975511965976,"a1":2.792526803190927,"shape":"ring","y":0},{"sp":"bulbs","px":655,"py":733,"r0":25,"r1":33,"a0":-2.792526803190927,"a1":2.792526803190927,"shape":"ring","y":0},{"sp":"salvia","px":655,"py":733,"r0":33,"r1":42,"a0":-2.792526803190927,"a1":-1.2217304763960306,"shape":"ring","y":0},{"sp":"echinacea","px":655,"py":733,"r0":33,"r1":42,"a0":-1.2217304763960306,"a1":0.3490658503988659,"shape":"ring","y":0},{"sp":"rudbeckia","px":655,"py":733,"r0":33,"r1":42,"a0":0.3490658503988659,"a1":1.7453292519943295,"shape":"ring","y":0},{"sp":"salvia","px":655,"py":733,"r0":33,"r1":42,"a0":1.7453292519943295,"a1":2.792526803190927,"shape":"ring","y":0},{"sp":"bulbs","px":655,"py":733,"r0":33,"r1":42,"a0":-2.792526803190927,"a1":2.792526803190927,"shape":"ring","y":0},{"sp":"sedum","px":655,"py":733,"r0":42,"r1":50,"a0":-2.792526803190927,"a1":-1.7453292519943295,"shape":"ring","y":0},{"sp":"aster","px":655,"py":733,"r0":42,"r1":50,"a0":-1.7453292519943295,"a1":-0.6981317007977318,"shape":"ring","y":0},{"sp":"grass","px":655,"py":733,"r0":42,"r1":50,"a0":-0.6981317007977318,"a1":0.5235987755982988,"shape":"ring","y":0},{"sp":"aster","px":655,"py":733,"r0":42,"r1":50,"a0":0.5235987755982988,"a1":1.5707963267948966,"shape":"ring","y":0},{"sp":"sedum","px":655,"py":733,"r0":42,"r1":50,"a0":1.5707963267948966,"a1":2.792526803190927,"shape":"ring","y":0},{"sp":"salvia","px":525,"py":612,"rx":44,"ry":4,"rot":-0.042,"shape":"rect","y":0},{"sp":"bulbs","px":525,"py":606,"rx":44,"ry":3,"rot":-0.042,"shape":"rect","y":0},{"sp":"sedum","px":672,"py":606,"rx":30,"ry":4,"rot":-0.042,"shape":"rect","y":0},{"sp":"aster","px":400,"py":600,"rx":34,"ry":6,"rot":0,"shape":"ell","y":0},{"sp":"grass","px":375,"py":610,"rx":16,"ry":8,"rot":0,"shape":"ell","y":0},{"sp":"bulbs","px":365,"py":800,"rx":18,"ry":8,"rot":0,"shape":"ell","y":0},{"sp":"sedum","px":372,"py":806,"rx":16,"ry":5,"rot":0,"shape":"ell","y":0},{"sp":"rudbeckia","px":592,"py":690,"rx":4,"ry":4,"rot":0,"shape":"ell","y":0.9},{"sp":"bulbs","px":592,"py":690,"rx":4,"ry":4,"rot":0,"shape":"ell","y":0.9}],"fountain":{"px":655,"py":733,"style":"round"},"ground":{"gravel":[[612,382],[706,378],[727,556],[612,559]],"lane":[[758,812],[700,812],[650,804],[596,798],[568,782]],"orchardLane":[[612,478],[400,478]],"beds":[[[705.0,733.0],[704.5722682635717,739.5261182340258],[703.2963912318206,745.9405793526767],[701.1941982286772,752.133636612251],[698.3016562406832,757.9993313273317],[694.6682545481272,763.4373057464848],[690.3561579996131,768.354520100072],[685.4391434169146,772.6668444427396],[680.0013373274518,776.3004980553222],[674.135776620865,779.1933117790483],[667.9428167558003,781.2957916844291],[661.5284147513263,782.5719658762356],[655.002316339744,782.9999999463457],[648.4761782972809,782.5725705445171],[642.0616580782198,781.2969906755598],[635.868503437427,779.1950845791655],[630.0026747264415,776.3028143331113],[624.5645319892689,772.6696645683796],[619.6471178753458,768.3577958232736],[615.3345657477797,763.4409810220168],[611.700660222969,758.0033432739149],[608.8075747697195,752.1379165884103],[606.7048079666134,745.9450541311465],[605.4283366174905,739.5307112546158],[605.0000002146172,733.004632679483],[605.4271272809286,726.4784748425888],[606.7024099843547,720.063895536884],[608.8040291694888,713.8706435281645],[611.6960276673958,708.0046808338631],[615.3289254965057,702.5663697903422],[619.6405664289498,697.6487559266369],[624.5571814382125,693.3359760234279],[629.9946508332836,689.7018185941881],[635.8599434851177,686.8084614176242],[642.0527085212897,684.7054077213057],[648.4669922561109,683.4286392176059],[654.9930509807879,683.0000004828887],[661.519228598107,683.4268252127663],[667.9338669766885,684.7018107479242],[674.1272163400431,686.8031430172875],[679.9933130050711,689.6948697608408],[685.4317923432687,693.327515646532],[690.349605946202,697.6389287570605],[694.6626136157981,702.5553439637774],[698.2970229416675,707.9926449941478],[701.1906518353361,713.8578035997235],[703.2939924203534,720.0504712015129],[704.5710580758902,726.4646957808585]],[[466.0,584.0],[475.7958984375,581.5],[489.8671875,579.5],[506.8017578125,578.0],[525.1875,577.0],[543.6123046875,576.5],[560.6640625,576.5],[574.9306640625,577.0],[585.0,578.0],[591.5712890625,579.7734375],[596.2890625,582.4375],[599.1591796875,585.7578125],[600.1875,589.5],[599.3798828125,593.4296875],[596.7421875,597.3125],[592.2802734375,600.9140625],[586.0,604.0],[576.3330078125,607.015625],[562.6015625,610.375],[546.1474609375,613.796875],[528.3125,617.0],[510.4384765625,619.703125],[493.8671875,621.625],[479.9404296875,622.484375],[470.0,622.0],[463.2998046875,619.7109375],[458.2421875,615.6875],[454.8916015625,610.4453125],[453.3125,604.5],[453.5693359375,598.3671875],[455.7265625,592.5625],[459.8486328125,587.6015625]],[[648.0,575.0],[653.814453125,573.0458984375],[661.140625,571.4609375],[669.427734375,570.2861328125],[678.125,569.5625],[686.681640625,569.3310546875],[694.546875,569.6328125],[701.169921875,570.5087890625],[706.0,572.0],[709.462890625,574.3251953125],[712.265625,577.5390625],[714.279296875,581.4365234375],[715.375,585.8125],[715.423828125,590.4619140625],[714.296875,595.1796875],[711.865234375,599.7607421875],[708.0,604.0],[701.740234375,608.423828125],[692.796875,613.453125],[682.048828125,618.724609375],[670.375,623.875],[658.654296875,628.541015625],[647.765625,632.359375],[638.587890625,634.966796875],[632.0,636.0],[627.890625,635.2236328125],[625.375,632.8828125],[624.171875,629.3349609375],[624.0,624.9375],[624.578125,620.0478515625],[625.625,615.0234375],[626.859375,610.2216796875],[628.0,606.0],[629.091796875,601.9814453125],[630.421875,597.6640625],[632.072265625,593.2177734375],[634.125,588.8125],[636.662109375,584.6181640625],[639.765625,580.8046875],[643.517578125,577.5419921875]],[[340.0,586.0],[349.26953125,583.845703125],[362.46875,581.953125],[378.30859375,580.427734375],[395.5,579.375],[412.75390625,578.900390625],[428.78125,579.109375],[442.29296875,580.107421875],[452.0,582.0],[458.314453125,585.185546875],[462.640625,589.734375],[465.177734375,595.259765625],[466.125,601.375],[465.681640625,607.693359375],[464.046875,613.828125],[461.419921875,619.392578125],[458.0,624.0],[453.0859375,628.048828125],[446.1875,632.078125],[437.8203125,635.912109375],[428.5,639.375],[418.7421875,642.291015625],[409.0625,644.484375],[399.9765625,645.779296875],[392.0,646.0],[384.65625,644.919921875],[377.25,642.609375],[369.96875,639.337890625],[363.0,635.375],[356.53125,630.990234375],[350.75,626.453125],[345.84375,622.033203125],[342.0,618.0],[338.673828125,614.0],[335.453125,609.625],[332.724609375,605.0625],[330.875,600.5],[330.291015625,596.125],[331.359375,592.125],[334.466796875,588.6875]],[[350.0,766.0],[353.9765625,764.173828125],[359.75,763.578125],[366.7109375,764.037109375],[374.25,765.375],[381.7578125,767.416015625],[388.625,769.984375],[394.2421875,772.904296875],[398.0,776.0],[400.06640625,779.837890625],[401.09375,784.828125],[401.19921875,790.560546875],[400.5,796.625],[399.11328125,802.611328125],[397.15625,808.109375],[394.74609375,812.708984375],[392.0,816.0],[388.3671875,818.255859375],[383.5,819.984375],[377.8203125,821.126953125],[371.75,821.625],[365.7109375,821.419921875],[360.125,820.453125],[355.4140625,818.666015625],[352.0,816.0],[349.58984375,811.732421875],[347.65625,805.609375],[346.26953125,798.275390625],[345.5,790.375],[345.41796875,782.552734375],[346.09375,775.453125],[347.59765625,769.720703125]]],"stones":[[612.0,568.0],[611.9060468749999,571.1369218749999],[611.7733749999999,574.247875],[611.6007656250001,577.3331406250002],[611.3870000000002,580.3930000000001],[611.130859375,583.427734375],[610.8311249999999,586.437625],[610.4865781249999,589.4229531249999],[610.0960000000001,592.3840000000001],[609.6581718750001,595.3210468750001],[609.171875,598.234375],[608.6358906249999,601.124265625],[608.0489999999999,603.9909999999999],[607.4099843750001,606.8348593750001],[606.7176249999999,609.656125],[605.970703125,612.455078125],[605.1679999999999,615.232],[604.308296875,617.987171875],[603.3903750000002,620.7208750000001],[602.4130156250001,623.433390625],[601.375,626.125],[600.275109375,628.795984375],[599.112125,631.446625],[597.884828125,634.077203125],[596.5920000000001,636.688],[595.232421875,639.279296875],[593.8048749999999,641.851375],[592.3081406250001,644.4045156249999],[590.7409999999999,646.939],[589.1022343750001,649.4551093750001],[587.390625,651.953125],[585.6049531250001,654.4333281250001],[583.744,656.896],[581.806546875,659.341421875],[579.791375,661.769875],[577.697265625,664.181640625],[575.523,666.577],[573.267359375,668.956234375],[570.929125,671.319625],[568.507078125,673.6674531250001],[566.0,676.0]],"paths":[{"pts":[[584,738],[630,735]],"w":14,"col":"#c8bfa8"}],"rings":[{"px":655,"py":733,"r0":18,"r1":25,"col":"#c8bfa8"}],"pads":[{"px":596,"py":840,"r":22,"col":"#b9b09a"}]},"labels":[{"t":"House","px":495,"py":720,"y":9.3,"dx":-70,"dy":-74,"ov":{"sw":[70,-84],"se":[-30,-80]}},{"t":"Barn","px":648,"py":325,"y":6.6,"dx":30,"dy":-40},{"t":"Gravel yard","s":"about 200 m²","px":668,"py":470,"y":0.1,"dx":70,"dy":-40,"ov":{"se":[90,-30],"sw":[-40,-60]}},{"t":"Scandic Standard (optional)","s":"8.7 × 6.3 m with terrace","home":1,"px":358,"py":478,"y":3.4,"dx":-40,"dy":-62},{"t":"Delivery and mowing lane","px":500,"py":478,"y":0.1,"dx":20,"dy":30,"v":"top"},{"t":"Gate to orchard","px":612,"py":565,"y":1.6,"dx":80,"dy":42,"ov":{"sw":[-90,-34],"se":[80,-56]}},{"t":"Garage apron","s":"size estimated from photos","px":545,"py":695,"y":0.2,"dx":-96,"dy":80,"v":"ne n top e"},{"t":"Round concrete disc","s":"kept: what is under it?","px":598,"py":712,"y":0.2,"dx":70,"dy":-62,"v":"n ne top"},{"t":"Old shed","px":372,"py":862,"y":2.6,"dx":-44,"dy":-40,"v":"sw se top"},{"t":"Car lane to the apron","s":"kept clear, 3.5 m","px":680,"py":808,"y":0.1,"dx":60,"dy":56,"v":"ne se top"},{"t":"Flower garden with mini fountain","s":"Ø 10 m, flowers rise in layers","px":655,"py":733,"y":1,"dx":-90,"dy":98,"ov":{"se":[-120,96],"sw":[120,70]}},{"t":"Coffee spot","s":"table under the big tree","px":596,"py":840,"y":1,"dx":-70,"dy":60,"v":"se sw top e"},{"t":"Trees on the slope","s":"big at the fence, smaller in front","px":730,"py":640,"y":9,"dx":120,"dy":-50,"ov":{"se":[120,-70],"sw":[-110,-70],"ne":[140,-30]}},{"t":"Lilac and colour along the orchard fence","px":540,"py":592,"y":3.5,"dx":-60,"dy":-70,"v":"n ne top"},{"t":"Back of the yard","s":"now planted","px":402,"py":622,"y":7,"dx":-60,"dy":-46,"v":"sw ne n top"},{"t":"Orchard group: north fence","s":"5 trees","px":443,"py":310,"y":5,"dx":-30,"dy":-54,"v":"n ne se sw"},{"t":"Orchard group: middle","s":"6 trees","px":480,"py":410,"y":5,"dx":70,"dy":-44,"v":"n ne se sw"},{"t":"Orchard group: yard fence","s":"4 trees","px":490,"py":532,"y":4,"dx":70,"dy":50,"v":"n ne se sw"},{"t":"20 m","px":691,"py":245,"y":0.4,"dx":0,"dy":22,"plain":1,"v":"ne n"},{"t":"20 m","px":339,"py":923,"y":0.4,"dx":0,"dy":24,"plain":1,"v":"se sw"},{"t":"Apricot","px":330,"py":310,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Apricot","px":388,"py":310,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Sweet cherry","px":448,"py":310,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Sweet cherry","px":511,"py":310,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Pear","px":567,"py":310,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Plum","px":415,"py":388,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Plum","px":470,"py":388,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Plum","px":525,"py":388,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Apple","px":442,"py":438,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Apple","px":497,"py":438,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Pear","px":552,"py":438,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Sour cherry","px":418,"py":532,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Sour cherry","px":467,"py":532,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Quince","px":516,"py":532,"y":4,"dx":0,"dy":0,"v":"top","small":1},{"t":"Quince","px":565,"py":532,"y":4,"dx":0,"dy":0,"v":"top","small":1}],"home":{"px":358,"py":478,"w":8.7,"d":6.3,"terrace":3.0,"hi":2.48},"seat":{"px":596,"py":840},"now":{"spring":[["Eastern redbud","magenta on bare branches, April","#d8418f"],["Serviceberry","white, April","#fbf8ee"],["Purple-leaf plum","pale pink, March-April","#f4b8cc"],["Lilac, deep purple","deep purple, May","#6a3a9c"],["Lilac, white","white, May","#fbfaf2"],["Lilac, magenta-pink","magenta-pink, May","#b04aa8"],["Woodland sage","indigo, May","#4c3cb4"],["Tulips and daffodils","red, yellow, white, pink, April","#e8321e"],["Sweet cherry","white, April","#fbfaf0"],["Sour cherry","white, April","#fbfaf0"],["Plum","white, April","#fbfbf2"],["Apple","pink-white, late April","#fbe4e8"],["Pear","white, April","#fbfbf0"],["Quince","pale pink, May","#fbdce0"],["Apricot","pale pink, March, the first to flower","#fbe4e0"]],"summer":[["Purple-leaf plum","purple leaf","#4e1f34"],["Smoke bush","purple leaf and pink haze","#d8a8b8"],["Panicle hydrangea","lime-white, July-September","#f2f4d4"],["Lavender","violet, June-July","#7a5cc4"],["Woodland sage","indigo","#4c3cb4"],["Coneflower","pink, July-August","#d8589c"],["Black-eyed Susan","gold, July-September","#f2b81e"]],"autumn":[["Red maple","scarlet","#c8201c"],["Sweetgum","orange, red and burgundy on one tree","#e8701c"],["Ginkgo","clear gold","#f2c81e"],["Columnar hornbeam","yellow","#e0b022"],["Eastern redbud","yellow","#e4bb2c"],["Serviceberry","orange-red","#e8541e"],["Purple-leaf plum","bronze-purple","#7a2c34"],["Smoke bush","fiery orange","#d8441e"],["Seven-son flower","cream flowers, then rose calyces, into October","#fbf6e8"],["Panicle hydrangea","dusty pink","#e0a4ac"],["Sedum","rose, turning rust","#b83a5c"],["Autumn aster","violet, September-October","#7a48c8"],["Fountain grass","gold plumes","#d8b45c"],["Apple","red fruit","#c8281e"],["Pear","red-bronze leaf","#a83024"],["Quince","yellow fruit","#f0d030"]],"winter":[["Columnar hornbeam","keeps some tan leaves","#9a7a4a"],["Serbian spruce","evergreen backbone","#24483c"],["Lavender","stays grey-green","#808c78"],["Fountain grass","straw","#c0a878"]]}};
+const Q=new URLSearchParams(location.search);
+if(Q.get('nopanel'))document.body.classList.add('nopanel');
+const YEAR=Q.get('year')==='20'?20:10;
+const inPoly=(pts,x,y)=>{let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
+if(Q.get('export'))document.body.classList.add('export');
+if(Q.get('nolabels'))document.body.classList.add('nolabels');
+
+// ---------- scale: satellite map pixels to metres (origin = map px 500,600; x east, z south) ----------
+const PX_PER_M=9.6;
+const P=(px,py)=>({x:(px-500)/PX_PER_M,z:(py-600)/PX_PER_M});
+const SLAB={x0:225,x1:805,y0:235,y1:935};
+const S0=P(SLAB.x0,SLAB.y0),S1=P(SLAB.x1,SLAB.y1);
+
+let seed=271;
+const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+const rr=(a,b)=>a+(b-a)*rnd();
+
+// ---------- terrain: flat around the house, falling east and south, rising gently into the orchard ----------
+function h(x,z){
+  let y=0;
+  y-=Math.max(0,x-8)*0.085;
+  y-=Math.max(0,z-20)*0.05;
+  y+=Math.max(0,8-z)*0.035*(1-Math.min(1,Math.max(0,x+10)/40)*0.7);
+  y+=0.07*Math.sin(x*.31+z*.17)+0.05*Math.sin(x*.13-z*.41);
+  return y;
+}
+
+// ---------- renderer ----------
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+const scene=new THREE.Scene();
+
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,1,800);
+const centre=new THREE.Vector3((S0.x+S1.x)/2,1,(S0.z+S1.z)/2);
+const ctl=new OrbitControls(cam,canvas);ctl.target.copy(centre);ctl.enableDamping=false;ctl.maxPolarAngle=Math.PI/2.1;
+
+scene.add(new THREE.HemisphereLight(0xe8eefc,0x8a7a58,1.25));
+const sun=new THREE.DirectionalLight(0xfff0d8,2.7);
+sun.position.set(centre.x+75,70,centre.z+22);sun.target.position.copy(centre);
+sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);
+Object.assign(sun.shadow.camera,{left:-75,right:75,top:75,bottom:-75,near:1,far:320});sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.04;
+scene.add(sun,sun.target);
+
+// ---------- canvas textures ----------
+function tex(w,h,draw,rep=true){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;if(rep){t.wrapS=t.wrapT=THREE.RepeatWrapping}t.anisotropy=8;return t}
+const stoneT=tex(512,512,(g,w,h)=>{g.fillStyle='#d8d0bd';g.fillRect(0,0,w,h);const cols=['#b9ad93','#a89b80','#c4b89e','#978b73','#bdb29c','#ad9f88'];
+  for(let y=0;y<h;y+=46)for(let x=-40+(y%92?30:0);x<w;x+=72){const a=rr(48,74),b=rr(30,42);g.fillStyle=cols[Math.floor(rnd()*6)];g.beginPath();g.moveTo(x+rr(0,8),y+rr(0,6));g.lineTo(x+a,y+rr(0,6));g.lineTo(x+a-rr(0,6),y+b);g.lineTo(x+rr(0,8),y+b-rr(0,6));g.closePath();g.fill()}});
+const tileT=tex(256,256,(g,w,h)=>{g.fillStyle='#a5543a';g.fillRect(0,0,w,h);for(let y=0;y<8;y++)for(let x=0;x<8;x++){const v=rr(-22,22);g.fillStyle=`rgb(${146+v},${86+v*.6},${64+v*.4})`;g.fillRect(x*32+(y%2?16:0),y*32,31,30);g.fillStyle='rgba(50,22,12,.35)';g.fillRect(x*32+(y%2?16:0),y*32+28,31,3)}});
+const woodT=tex(256,256,(g,w,h)=>{g.fillStyle='#4e2f1c';g.fillRect(0,0,w,h);for(let x=0;x<w;x+=16){const v=rr(-14,20);g.fillStyle=`rgb(${84+v},${50+v*.7},${28+v*.4})`;g.fillRect(x,0,15,h);g.fillStyle='rgba(20,10,4,.55)';g.fillRect(x+15,0,1.5,h)}});
+const brickT=tex(128,128,(g,w,h)=>{g.fillStyle='#d9c9b4';g.fillRect(0,0,w,h);for(let y=0;y<8;y++)for(let x=-1;x<4;x++){const v=rr(-20,16);g.fillStyle=`rgb(${168+v},${74+v*.6},${50+v*.4})`;g.fillRect(x*32+(y%2?16:0),y*16,30,14)}});
+const sheetT=tex(128,128,(g,w,h)=>{g.fillStyle='#6b6a63';g.fillRect(0,0,w,h);for(let x=0;x<w;x+=16){const gr=g.createLinearGradient(x,0,x+16,0);gr.addColorStop(0,'#55554f');gr.addColorStop(.5,'#8a8980');gr.addColorStop(1,'#55554f');g.fillStyle=gr;g.fillRect(x,0,16,h)}g.fillStyle='rgba(120,110,60,.2)';for(let i=0;i<30;i++)g.fillRect(rr(0,w),rr(0,h),rr(4,24),rr(2,10))});
+const M=(o)=>new THREE.MeshStandardMaterial({roughness:.9,metalness:0,...o});
+const mat={
+  cream:M({color:0xe7dfc8}),peach:M({color:0xdca682}),stone:M({map:stoneT}),wood:M({map:woodT}),tile:M({map:tileT}),brick:M({map:brickT}),
+  metal:M({color:0x9aa0a0,roughness:.5,metalness:.35}),rail:M({color:0x46291a}),door:M({color:0x6f2f22}),glass:M({color:0x2a3338,roughness:.25}),
+  concrete:M({color:0xb4afa2}),asphalt:M({color:0x7b7a78}),green:M({color:0x1f5a44}),teal:M({color:0x2f7f7a,roughness:.5}),sheet:M({map:sheetT}),block:M({color:0xc8c6bc}),
+  white:M({color:0xf5f2ea}),poleWood:M({color:0x5c4a38}),gray:M({color:0x9b9a92}),glassBlock:M({color:0xb9cdd2,roughness:.3})
+};
+
+function uvBox(g,w,hh,d,s){const uv=g.attributes.uv;const dims=[[d,hh],[d,hh],[w,d],[w,d],[w,hh],[w,hh]];for(let f=0;f<6;f++)for(let i=0;i<4;i++){const k=f*4+i;uv.setXY(k,uv.getX(k)*dims[f][0]/s,uv.getY(k)*dims[f][1]/s)}return g}
+function box(parent,x0,x1,y0,y1,z0,z1,m,s=0){const w=x1-x0,hh=y1-y0,d=z1-z0;const g=new THREE.BoxGeometry(w,hh,d);if(s)uvBox(g,w,hh,d,s);const o=new THREE.Mesh(g,m);o.position.set((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function quad(parent,a,b,c,d,m,ru=1,rv=1){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([...a,...b,...c,...d],3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,ru,0,ru,rv,0,rv],2));g.setIndex([0,1,2,0,2,3]);g.computeVertexNormals();const o=new THREE.Mesh(g,m);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function prism(parent,pts,z0,z1,m){const sh=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1])));const g=new THREE.ExtrudeGeometry(sh,{depth:z1-z0,bevelEnabled:false});g.translate(0,0,z0);const o=new THREE.Mesh(g,m);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+
+// ---------- ground painted in satellite-map pixel coordinates ----------
+const GW=2900,GH=3500,GS=GW/(SLAB.x1-SLAB.x0);
+const groundT=tex(GW,GH,(g)=>{
+  const X=p=>(p-SLAB.x0)*GS,Y=p=>(p-SLAB.y0)*GS;
+  const poly=(pts,fill)=>{g.fillStyle=fill;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.closePath();g.fill()};
+  const blots=(n,fn,r0,r1,alpha,cols)=>{for(let i=0;i<n;i++){const p=fn();if(!p)continue;const r=rr(r0,r1);g.globalAlpha=alpha*rr(.5,1);g.fillStyle=cols[Math.floor(rnd()*cols.length)];g.beginPath();g.ellipse(X(p[0]),Y(p[1]),r*GS,r*GS*rr(.5,1),rnd()*3,0,7);g.fill()}g.globalAlpha=1};
+  const inP=(pts,x,y)=>{let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
+  const any=()=>[rr(SLAB.x0,SLAB.x1),rr(SLAB.y0,SLAB.y1)];
+  const within=pts=>()=>{const p=any();return inP(pts,p[0],p[1])?p:null};
+  g.fillStyle='#8a9a58';g.fillRect(0,0,GW,GH);
+  blots(16000,any,3,14,.32,['#7c9050','#94a55e','#6f8648','#a3ae68']);
+  // yard: mown, greener
+  const yard=[[312,575],[735,558],[760,875],[385,895],[358,880]];
+  poly(yard,'#6f9347');
+  blots(26000,within(yard),2,10,.34,['#648a40','#7fa152','#5d7f3c','#8aa95a']);
+  // orchard: cleared, thin grass with churned soil
+  const orch=[[262,288],[705,272],[728,558],[300,555]];
+  poly(orch,'#83945a');
+  blots(14000,within(orch),2,9,.3,['#76894f','#909f62','#a09d62']);
+  // gravel yard at the bottom of the orchard
+  {const pts=OPT.ground.gravel;poly(pts,'#a79c84');let n=0;const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+   for(let i=0;i<26000;i++){const x=rr(x0,x1),y=rr(y0,y1);if(!inPoly(pts,x,y))continue;g.globalAlpha=.55;g.fillStyle=['#8f8570','#bcb299','#7c735f','#cac2ab'][Math.floor(rnd()*4)];g.fillRect(X(x),Y(y),rr(2,6),rr(2,6))}g.globalAlpha=1;
+   g.strokeStyle='#8c8f58';g.lineWidth=2.4*GS;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.closePath();g.stroke()}
+  // access from the road into the gravel, and the second access track
+  [[[727,470],[805,462]],[[765,820],[805,830]]].forEach((l,i)=>{g.lineCap='butt';g.strokeStyle=i?'rgba(165,158,104,.8)':'#a79c84';g.lineWidth=28*GS;g.beginPath();g.moveTo(X(l[0][0]),Y(l[0][1]));g.lineTo(X(l[1][0]),Y(l[1][1]));g.stroke()});
+  // mown lanes: delivery lane along the bottom of the orchard, car lane from the east gate to the apron
+  const stroke=(pts,w,col)=>{g.lineCap='round';g.lineJoin='round';g.strokeStyle=col;g.lineWidth=w*GS;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke()};
+  stroke(OPT.ground.orchardLane,34,'rgba(150,172,92,.4)');
+  stroke(OPT.ground.lane,34,'#a9a48c');stroke(OPT.ground.lane,18,'rgba(124,150,76,.8)');
+  // reserved pad for the modular home
+  {const o=OPT.home,w=o.w*PX_PER_M/2+14,d=o.d*PX_PER_M/2+12;poly([[o.px-w,o.py-d],[o.px+w,o.py-d],[o.px+w,o.py+d],[o.px-w,o.py+d]],'rgba(150,172,92,.6)')}
+  // beds, mulched
+  OPT.ground.beds.forEach(b=>{poly(b,'#54432f');const xs=b.map(p=>p[0]),ys=b.map(p=>p[1]);const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    for(let i=0;i<5000;i++){const x=rr(x0,x1),y=rr(y0,y1);if(!inPoly(b,x,y))continue;g.globalAlpha=.5;g.fillStyle=['#46372a','#62503a','#6e5a40','#3c3024'][Math.floor(rnd()*4)];g.fillRect(X(x),Y(y),rr(2,6),rr(2,5))}g.globalAlpha=1;
+    g.strokeStyle='rgba(60,48,32,.75)';g.lineWidth=.9*GS;g.beginPath();b.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.closePath();g.stroke()});
+  // gravel paths and the ring around the fountain
+  OPT.ground.paths.forEach(p=>stroke(p.pts,p.w,p.col));
+  OPT.ground.rings.forEach(r=>{g.strokeStyle=r.col;g.lineWidth=(r.r1-r.r0)*GS;g.beginPath();g.arc(X(r.px),Y(r.py),(r.r0+r.r1)/2*GS,0,6.3);g.stroke()});
+  // stepping stones from the orchard gate to the apron
+  OPT.ground.stones.forEach((p,i)=>{if(i%2)return;g.fillStyle=['#c8bfa8','#b9b09a','#d2cab4'][i%3];g.beginPath();g.ellipse(X(p[0]),Y(p[1]),7*GS,4.6*GS,.3*i,0,7);g.fill()});
+  // the gravel pad for the coffee spot
+  OPT.ground.pads.forEach(p=>{g.fillStyle=p.col;g.beginPath();g.ellipse(X(p.px),Y(p.py),p.r*GS,p.r*GS,0,0,7);g.fill()});
+  // a mulched circle under each tree
+  OPT.fruit.concat(OPT.plants.filter(p=>OPT.sp[p[0]].group==="tree")).forEach(([k,x,y])=>{g.fillStyle='rgba(84,67,47,.8)';g.beginPath();g.ellipse(X(x),Y(y),9*GS,9*GS,0,0,7);g.fill()});
+});
+groundT.wrapS=groundT.wrapT=THREE.ClampToEdgeWrapping;
+const groundMat=M({map:groundT});const tuftMat=new THREE.MeshBasicMaterial({});
+
+{ const nx=240,nz=290,W=S1.x-S0.x,D=S1.z-S0.z;
+  const g=new THREE.PlaneGeometry(W,D,nx,nz);g.rotateX(-Math.PI/2);g.translate((S0.x+S1.x)/2,0,(S0.z+S1.z)/2);
+  const pos=g.attributes.position;for(let i=0;i<pos.count;i++)pos.setY(i,h(pos.getX(i),pos.getZ(i)));g.computeVertexNormals();
+  const m=new THREE.Mesh(g,groundMat);m.receiveShadow=true;scene.add(m);
+  // cut-earth sides of the model
+  const soilT=tex(64,256,(c,w,hh)=>{const gr=c.createLinearGradient(0,0,0,hh);gr.addColorStop(0,'#5d4630');gr.addColorStop(.18,'#6c5338');gr.addColorStop(.6,'#7f6545');gr.addColorStop(1,'#8d7654');c.fillStyle=gr;c.fillRect(0,0,w,hh);for(let i=0;i<220;i++){c.fillStyle=`rgba(40,28,16,${rr(.05,.25)})`;c.fillRect(rr(0,w),rr(0,hh),rr(1,4),rr(1,3))}});
+  const soil=new THREE.MeshBasicMaterial({map:soilT,side:THREE.DoubleSide,toneMapped:false});
+  const edge=(a,b)=>{const n=90,p=[],uv=[],ix=[];for(let i=0;i<=n;i++){const t=i/n,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;p.push(x,h(x,z),z,x,-7,z);uv.push(t*14,1,t*14,0);if(i<n){const k=i*2;ix.push(k,k+1,k+2,k+1,k+3,k+2)}}const e=new THREE.BufferGeometry();e.setAttribute('position',new THREE.Float32BufferAttribute(p,3));e.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));e.setIndex(ix);e.computeVertexNormals();scene.add(new THREE.Mesh(e,soil))};
+  const A={x:S0.x,z:S0.z},B={x:S1.x,z:S0.z},C={x:S1.x,z:S1.z},E={x:S0.x,z:S1.z};
+  edge(A,B);edge(B,C);edge(C,E);edge(E,A);
+}
+
+// ---------- instanced helpers ----------
+const up=new THREE.Vector3(0,1,0),_m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_v=new THREE.Vector3(),_s=new THREE.Vector3(),_c=new THREE.Color();
+function instanced(geo,material,list,shadow=true){const im=new THREE.InstancedMesh(geo,material,list.length);list.forEach((it,i)=>{_m.compose(it.p,it.q||_q.identity(),it.s);im.setMatrixAt(i,_m);if(it.c)im.setColorAt(i,_c.set(it.c))});im.castShadow=shadow;im.receiveShadow=true;scene.add(im);return im}
+function segs(list,material){const g=new THREE.CylinderGeometry(.72,1,1,7,1,false);const L=list.map(s=>{const a=s.a,b=s.b,d=_v.clone().subVectors(b,a),l=d.length();return{p:a.clone().addScaledVector(d,.5),q:new THREE.Quaternion().setFromUnitVectors(up,d.normalize()),s:new THREE.Vector3(s.r,l,s.r)}});return instanced(g,material,L)}
+
+// ---------- house: dimensions in metres from the ground-floor, first-floor and roof plans ----------
+// u runs south to north along the front, w runs back (west) to front (east); the walls sit almost parallel to the fences
+const PLOT=3*Math.PI/180,HA=Math.PI/2+PLOT,hc=P(495,725);
+const L=(u,w)=>({x:hc.x+(u-4.65)*Math.cos(HA)+(w-4.2)*Math.sin(HA),z:hc.z-(u-4.65)*Math.sin(HA)+(w-4.2)*Math.cos(HA)});
+const toPx=q=>[q.x*PX_PER_M+500,q.z*PX_PER_M+600];
+{const G=new THREE.Group();scene.add(G);
+ G.rotation.y=HA;const o0=L(0,0);
+ G.position.set(o0.x,.14,o0.z);
+ const FN=6.34,FS=7.6,RID=6.0,RH=8.95,EV=5.3;
+ const roofAt=u=>u<RID?RH-(RID-u)/6.6*(RH-EV):RH-(u-RID)/3.91*(RH-EV);
+ prism(G,[[0,0],[9.31,0],[9.31,roofAt(9.31)],[RID,RH-.1],[0,roofAt(0)]],0,FN,mat.cream);
+ prism(G,[[0,0],[RID,0],[RID,RH-.1],[0,roofAt(0)]],FN,FS,mat.cream);
+ // stone plinth wraps west, north and south, and rises to the balcony slab on the east
+ box(G,-.04,9.35,0,1.55,-.05,.02,mat.stone,1.6);
+ box(G,9.3,9.36,0,1.55,0,FN,mat.stone,1.6);
+ box(G,-.05,.02,0,1.55,0,FS,mat.stone,1.6);
+ box(G,3.7,6.0,0,2.65,FS,8.35,mat.stone,1.6);
+ box(G,-.04,.38,0,2.65,FS-.02,8.35,mat.stone,1.6);
+ box(G,6.0,6.34,0,2.65,FN,6.86,mat.stone,1.6);
+ box(G,8.93,9.34,0,2.65,FN,6.86,mat.stone,1.6);
+ box(G,6.05,8.95,0,2.65,FN-.02,FN+.04,mat.stone,1.6);
+ // recessed entrance and garage door
+ box(G,.38,3.7,0,2.65,FS-.01,FS+.02,mat.stone,1.6);
+ box(G,.67,3.39,.08,2.2,FS+.01,FS+.06,mat.door);
+ [1.0,1.68,2.36,3.04].forEach(u=>box(G,u-.22,u+.2,.35,2.05,FS+.05,FS+.08,mat.glass));
+ box(G,6.34,8.59,.05,1.95,FN+.03,FN+.1,mat.door);
+ // east upper level: peach recesses and the rendered pier between them
+ box(G,3.7,6.0,2.65,5.25,FS,8.35,mat.cream);
+ box(G,.12,3.7,2.75,5.1,FS,FS+.03,mat.peach);
+ box(G,6.0,9.3,2.75,5.3,FN,FN+.03,mat.peach);
+ box(G,1.05,2.55,2.95,4.8,FS+.02,FS+.06,mat.glass);box(G,1.0,1.75,3,4.85,FS+.05,FS+.07,mat.rail);
+ box(G,6.95,8.45,2.95,4.85,FN+.02,FN+.06,mat.glass);box(G,6.95,7.65,3,4.85,FN+.05,FN+.07,mat.rail);
+ // timber-clad gables
+ const clad=(u0,u1,w,yb)=>{const pts=[[u0,yb],[u1,yb]];if(u1>RID-.01&&u1<RID+.01)pts.push([RID,RH-.08],[u0,roofAt(u0)-.02]);else pts.push([u1,roofAt(u1)-.02],[RID,RH-.08],[u0,yb+.02]);const s=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1])));const g=new THREE.ShapeGeometry(s);const pos=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<pos.count;i++)uv.setXY(i,pos.getX(i)/1.4,pos.getY(i)/2);g.computeVertexNormals();const o=new THREE.Mesh(g,mat.wood);o.position.z=w;o.castShadow=true;G.add(o)};
+ clad(0,RID,FS+.04,5.2);clad(RID,9.31,FN+.05,5.25);
+ // balconies with slabs and timber railings
+ const balcony=(u0,u1,w0,w1,y)=>{box(G,u0,u1,y-.2,y,w0,w1,mat.concrete);
+   box(G,u0,u1,y+.95,y+1.03,w1-.06,w1,mat.rail);box(G,u0,u0+.06,y+.95,y+1.03,w0,w1,mat.rail);box(G,u1-.06,u1,y+.95,y+1.03,w0,w1,mat.rail);
+   for(let r=.2;r<.92;r+=.2){box(G,u0,u1,y+r,y+r+.08,w1-.05,w1-.01,mat.rail);box(G,u0,u0+.05,y+r,y+r+.08,w0,w1,mat.rail);box(G,u1-.05,u1,y+r,y+r+.08,w0,w1,mat.rail)}};
+ balcony(-.12,3.7,FS,FS+1.25,2.82);balcony(6.08,9.42,FN,FN+1.23,2.82);
+ // roof: two unequal slopes meeting on the off-centre ridge, with a shorter north plane
+ const oU0=-.6,oU1=9.91,oB=-.6,oFS=8.95,oFN=7.46,TR=.82;
+ quad(G,[oU0,roofAt(oU0),oFS],[RID,RH,oFS],[RID,RH,oB],[oU0,roofAt(oU0),oB],mat.tile,6.9/TR,9.55/TR);
+ quad(G,[RID,RH,oFN],[oU1,roofAt(oU1),oFN],[oU1,roofAt(oU1),oB],[RID,RH,oB],mat.tile,5/TR,8.06/TR);
+ quad(G,[RID,RH,oB],[oU1,roofAt(oU1),oB],[oU1,roofAt(oU1),oFN],[RID,RH,oFN],mat.tile,5/TR,8.06/TR);
+ quad(G,[oU0,roofAt(oU0),oB],[RID,RH,oB],[RID,RH,oFS],[oU0,roofAt(oU0),oFS],mat.tile,6.9/TR,9.55/TR);
+ // metal rake and eave trim
+ const bar=(a,b,r=.075)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A),l=d.length();const o=new THREE.Mesh(new THREE.BoxGeometry(r*2,r*1.4,l),mat.metal);o.position.copy(A).addScaledVector(d,.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.clone().normalize());o.castShadow=true;G.add(o)};
+ bar([oU0,roofAt(oU0),oFS],[RID,RH,oFS]);bar([oU0,roofAt(oU0),oB],[RID,RH,oB]);bar([RID,RH,oFN],[oU1,roofAt(oU1),oFN]);bar([RID,RH,oB],[oU1,roofAt(oU1),oB]);
+ bar([oU0,roofAt(oU0),oB],[oU0,roofAt(oU0),oFS]);bar([oU1,roofAt(oU1),oB],[oU1,roofAt(oU1),oFN]);bar([RID,RH+.03,oB],[RID,RH+.03,oFS],.09);
+ // round stair tower with its glass-block strip
+ const tw=new THREE.Mesh(new THREE.CylinderGeometry(1.47,1.47,5,28),mat.cream);tw.position.set(0,2.5,3.32);tw.castShadow=tw.receiveShadow=true;G.add(tw);
+ const twb=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,1.2,28),mat.gray);twb.position.set(0,.6,3.32);twb.castShadow=true;G.add(twb);
+ const twr=new THREE.Mesh(new THREE.ConeGeometry(2,.72,28),mat.tile);twr.position.set(-.18,5.36,3.32);twr.castShadow=true;G.add(twr);
+ const gb=new THREE.Mesh(new THREE.CylinderGeometry(1.51,1.51,3.5,10,1,true,-Math.PI/2-.3,.6),mat.glassBlock);gb.position.set(0,2.95,3.32);G.add(gb);
+ // chimneys and the rendered flue on the north wall
+ box(G,9.31,9.98,0,6.0,2.15,2.86,mat.white);
+ box(G,9.33,10.0,6.0,7.55,2.15,2.86,mat.brick,1);box(G,9.25,10.08,7.55,7.65,2.07,2.94,mat.concrete);
+ box(G,3.0,3.7,5.5,8.4,2.0,2.6,mat.brick,1);box(G,2.92,3.78,8.4,8.5,1.92,2.68,mat.concrete);
+ // windows
+ box(G,4.95,6.75,3.2,4.4,-.06,.01,M({color:0x6a3f26}));box(G,5.84,5.87,3.2,4.4,-.08,-.02,mat.rail);
+ [3.7,6.91].forEach(u=>box(G,u,u+.7,.72,1.3,-.08,0,mat.glass));
+ box(G,-.06,0,3.1,4.25,.7,1.4,M({color:0x6a3f26}));box(G,-.06,0,.72,1.3,.7,1.4,mat.glass);
+ // concrete walk and gutters
+ box(G,-1.7,10.2,-.1,.06,-1,.0,mat.concrete);box(G,9.31,10.2,-.1,.06,0,FN+1.2,mat.concrete);box(G,-1.9,0,-.1,.06,.0,FS+.1,mat.concrete);box(G,.38,3.7,-.1,.06,FS,8.35,mat.concrete);
+ box(G,6.0,9.31,-.1,.05,FN,8.35,mat.concrete);
+ [[-.1,2.15],[9.34,1.4]].forEach(([u,w])=>box(G,u-.05,u+.05,.2,5.5,w,w+.1,mat.metal));
+}
+
+// ---------- apron, lamps and the brick planter by the entrance ----------
+{
+ const place=(px,py,dy=0)=>{const c=P(px,py);return new THREE.Vector3(c.x,h(c.x,c.z)+dy,c.z)};
+ const ap=[[-.6,8.35],[6,8.35],[6,13.45],[-.6,13.45]].map(q=>L(q[0],q[1]));
+ const s=new THREE.Shape(ap.map(p=>new THREE.Vector2(p.x,-p.z)));const g=new THREE.ExtrudeGeometry(s,{depth:.22,bevelEnabled:false});g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,mat.asphalt);m.position.y=-.02;m.receiveShadow=true;m.castShadow=true;scene.add(m);
+ const lamp=(px,py)=>{const p=place(px,py);const b=new THREE.Mesh(new THREE.BoxGeometry(.6,.45,.6),mat.brick);b.position.set(p.x,p.y+.28,p.z);b.castShadow=true;scene.add(b);
+   const c=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,2.5,8),mat.teal);c.position.set(p.x,p.y+1.7,p.z);c.castShadow=true;scene.add(c);
+   const k=new THREE.Mesh(new THREE.CylinderGeometry(.24,.17,.3,10),mat.white);k.position.set(p.x,p.y+3.05,p.z);k.castShadow=true;scene.add(k);
+   const r=new THREE.Mesh(new THREE.ConeGeometry(.3,.16,10),mat.teal);r.position.set(p.x,p.y+3.28,p.z);scene.add(r)};
+ lamp(...toPx(L(5.8,13.25)));lamp(...toPx(L(-.4,13.25)));
+ const pl=place(...toPx(L(8.3,14.3)));box(scene,pl.x-.5,pl.x+.5,pl.y,pl.y+.9,pl.z-.5,pl.z+.5,mat.brick,1);
+ const cs=place(...toPx(L(6.2,15.1)));const crack=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,.1,14),mat.concrete);crack.position.set(cs.x,cs.y+.02,cs.z);crack.receiveShadow=true;scene.add(crack);
+ // concrete in front of the garage, cracked at its outer edge; size estimated from the photos
+ {const old=M({color:0xa9a496});const ga=[[6,6.86],[9.6,6.86],[9.6,11],[6,11]].map(q=>L(q[0],q[1]));const s2=new THREE.Shape(ga.map(p=>new THREE.Vector2(p.x,-p.z)));const g2=new THREE.ExtrudeGeometry(s2,{depth:.16,bevelEnabled:false});g2.rotateX(-Math.PI/2);const m2=new THREE.Mesh(g2,old);m2.position.y=-.02;m2.receiveShadow=true;scene.add(m2);
+  [[7,11.6,.7],[8.6,11.5,.55],[6.6,12.5,.5]].forEach(([u,w,r])=>{const q=L(u,w),p=new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.08,.1,7),old);p.position.set(q.x,h(q.x,q.z)+.03,q.z);p.rotation.y=u;p.receiveShadow=true;scene.add(p)})}
+}
+
+// ---------- well with its little pitched roof ----------
+{const c=P(594,581),y=h(c.x,c.z);const G=new THREE.Group();G.position.set(c.x,y,c.z);G.rotation.y=PLOT;scene.add(G);
+ box(G,-.75,.75,0,.75,-.6,.6,mat.concrete);
+ quad(G,[-.95,.8,.8],[0,1.55,.8],[0,1.55,-.8],[-.95,.8,-.8],mat.white);quad(G,[-.95,.8,-.8],[0,1.55,-.8],[0,1.55,.8],[-.95,.8,.8],mat.white);
+ quad(G,[0,1.55,.8],[.95,.8,.8],[.95,.8,-.8],[0,1.55,-.8],mat.white);quad(G,[0,1.55,-.8],[.95,.8,-.8],[.95,.8,.8],[0,1.55,.8],mat.white);
+ const tri=(z)=>{const s=new THREE.Shape([new THREE.Vector2(-.75,.75),new THREE.Vector2(.75,.75),new THREE.Vector2(0,1.48)]);const m=new THREE.Mesh(new THREE.ShapeGeometry(s),new THREE.MeshStandardMaterial({color:0x4b4a44,side:THREE.DoubleSide}));m.position.z=z;G.add(m)};tri(.6);tri(-.6);
+}
+
+// ---------- barn: fibre-cement roof, open block ground floor ----------
+{const c=P(648,335),y=h(c.x,c.z);const G=new THREE.Group();G.position.set(c.x,y,c.z);G.rotation.y=PLOT;scene.add(G);
+ const W=10.2,D=7.6,E=5.0,R=6.5;
+ box(G,-W/2,W/2,-.3,2.7,-D/2,-D/2+.25,mat.block,1);box(G,-W/2,-W/2+.25,-.3,2.7,-D/2,D/2,mat.block);box(G,W/2-.25,W/2,-.3,2.7,-D/2,D/2,mat.block);
+ box(G,-W/2+.25,W/2-.25,-.3,.02,-D/2,D/2,mat.concrete);
+ box(G,1.5,W/2,-.3,2.7,D/2-3.2,D/2-3,mat.block);
+ [-W/2+.2,-1.8,1.5,W/2-.2].forEach(x=>box(G,x-.2,x+.2,-.3,2.75,D/2-.4,D/2,mat.white));
+ box(G,-W/2,W/2,2.7,E,-D/2,D/2,mat.white);
+ const end=(x)=>{const s=new THREE.Shape([new THREE.Vector2(-D/2,E),new THREE.Vector2(D/2,E),new THREE.Vector2(0,R)]);const m=new THREE.Mesh(new THREE.ShapeGeometry(s),new THREE.MeshStandardMaterial({color:0xece7da,side:THREE.DoubleSide}));m.rotation.y=Math.PI/2;m.position.x=x;m.castShadow=true;G.add(m)};end(-W/2);end(W/2);
+ const ov=.5,yE=E-.18;
+ quad(G,[-W/2-ov,yE,D/2+ov],[W/2+ov,yE,D/2+ov],[W/2+ov,R,0],[-W/2-ov,R,0],mat.sheet,12,5);
+ quad(G,[W/2+ov,yE,-D/2-ov],[-W/2-ov,yE,-D/2-ov],[-W/2-ov,R,0],[W/2+ov,R,0],mat.sheet,12,5);
+ quad(G,[-W/2-ov,R,0],[W/2+ov,R,0],[W/2+ov,yE,D/2+ov],[-W/2-ov,yE,D/2+ov],mat.sheet,12,5);
+ quad(G,[-W/2-ov,R,0],[-W/2-ov,yE,-D/2-ov],[W/2+ov,yE,-D/2-ov],[W/2+ov,R,0],mat.sheet,12,5);
+ box(G,1.9,3.2,1.3,2.2,D/2-3.01,D/2-2.98,mat.glass);
+}
+
+// ---------- brick shed with leaning old timber ----------
+{const c=P(372,862),y=h(c.x,c.z);const G=new THREE.Group();G.position.set(c.x,y,c.z);G.rotation.y=Math.PI/2+PLOT;scene.add(G);
+ const W=5.6,D=3.2;box(G,-W/2,W/2,-.2,2.35,-D/2,D/2,mat.brick,.9);
+ const ov=.45;quad(G,[-W/2-ov,2.55,D/2+ov],[W/2+ov,2.55,D/2+ov],[W/2+ov,2.25,-D/2-ov],[-W/2-ov,2.25,-D/2-ov],mat.sheet,6,3);quad(G,[-W/2-ov,2.25,-D/2-ov],[W/2+ov,2.25,-D/2-ov],[W/2+ov,2.55,D/2+ov],[-W/2-ov,2.55,D/2+ov],mat.sheet,6,3);
+ const planks=[];for(let i=0;i<26;i++){const x=rr(-2.7,2.7);if(x>-1.1&&x<-.2)continue;const l=rr(1.8,2.5),t=rr(.1,.28);const a=new THREE.Vector3(x,0,D/2+t*l*.6),b=new THREE.Vector3(x+rr(-.1,.1),l*.95,D/2+.04);planks.push({a,b})}
+ planks.forEach(s=>{const d=s.b.clone().sub(s.a),l=d.length();const o=new THREE.Mesh(new THREE.BoxGeometry(rr(.12,.26),l,.04),M({color:['#5a4c3e','#7a6a58','#4a3d30','#8a7c68'][Math.floor(rnd()*4)]}));o.position.copy(s.a).addScaledVector(d,.5);o.quaternion.setFromUnitVectors(up,d.normalize());o.castShadow=true;G.add(o)});
+ box(G,-1.05,-.15,.05,2.05,D/2-.02,D/2+.01,M({color:0x3f3f3c}));
+}
+
+// ---------- fences: green panels north and east of the yard, wire mesh on the west and south ----------
+{
+ const posts=[],vbars=[],rails=[],meshes=[];
+ const panel=(a,b,ht=1.1,green=true,curb=true)=>{const pa=P(a[0],a[1]),pb=P(b[0],b[1]);const dx=pb.x-pa.x,dz=pb.z-pa.z,l=Math.hypot(dx,dz),ang=Math.atan2(-dz,dx),seg=Math.round(l/2.5);
+   for(let i=0;i<=seg;i++){const t=i/seg,x=pa.x+dx*t,z=pa.z+dz*t,y=h(x,z);posts.push({p:new THREE.Vector3(x,y+ht/2+.2,z),s:new THREE.Vector3(.07,ht+.4,.07),q:new THREE.Quaternion().setFromAxisAngle(up,ang),c:green?'#1c5a44':'#7f8a86'})}
+   for(let i=0;i<seg;i++){const t0=i/seg,t1=(i+1)/seg,x0=pa.x+dx*t0,z0=pa.z+dz*t0,x1=pa.x+dx*t1,z1=pa.z+dz*t1,y0=h(x0,z0),y1=h(x1,z1),sl=Math.hypot(x1-x0,z1-z0);
+     const q=new THREE.Quaternion().setFromAxisAngle(up,ang);const cx=(x0+x1)/2,cz=(z0+z1)/2,cy=(y0+y1)/2;
+     if(green){[.32,ht+.18].forEach(r=>rails.push({p:new THREE.Vector3(cx,cy+r,cz),q,s:new THREE.Vector3(sl,.045,.045),c:'#1c5a44'}));
+       for(let k=0;k<sl/.22;k++){const f=(k+.5)/(sl/.22);vbars.push({p:new THREE.Vector3(x0+(x1-x0)*f,cy+.75,z0+(z1-z0)*f),q,s:new THREE.Vector3(.025,ht-.15,.025),c:'#1f6a4e'})}
+       if(curb)rails.push({p:new THREE.Vector3(cx,cy+.05,cz),q,s:new THREE.Vector3(sl,.34,.2),c:'#a39e8e'})}
+     else{const g=new THREE.PlaneGeometry(sl,ht-.05);const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x7d8882,transparent:true,opacity:.24,side:THREE.DoubleSide,depthWrite:false}));m.position.set(cx,cy+ht/2+.03,cz);m.rotation.y=ang;scene.add(m);rails.push({p:new THREE.Vector3(cx,cy+ht+.02,cz),q,s:new THREE.Vector3(sl,.02,.02),c:'#7f8a86'})}
+   }};
+ panel([322,578],[452,571],1.15,false,false);
+ panel([452,571],[715,560],1.15,true,true);
+ panel([715,560],[760,572],1.15,true,true);
+ panel([760,572],[763,875],1.1,true,false);
+ panel([763,875],[390,896],1.2,false,false);
+ panel([390,896],[350,885],1.2,false,false);
+ panel([350,885],[322,578],1.2,false,false);
+ panel([268,290],[302,555],1.2,false,false);
+ const bg=new THREE.BoxGeometry(1,1,1),fm=M({roughness:.6});
+ instanced(bg,fm,posts);instanced(bg,fm,vbars);instanced(bg,fm,rails);
+ // gates: the small orchard gate between the well and the pole, and the east gate by the access track
+ [[612,565],[761,812]].forEach(([px,py],i)=>{const c=P(px,py),y=h(c.x,c.z);const g=new THREE.Mesh(new THREE.BoxGeometry(i?.07:1.2,1.5,i?1.2:.07),M({color:0x1a4f3c}));g.position.set(c.x,y+.8,c.z);if(!i)g.rotation.y=.052;g.castShadow=true;scene.add(g)});
+}
+
+// ---------- utility pole and the wires to the house ----------
+{
+ const c=P(630,580),y=h(c.x,c.z),top=new THREE.Vector3(c.x,y+8,c.z);
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.09,.15,8,8),mat.poleWood);pole.position.set(c.x,y+4,c.z);pole.castShadow=true;scene.add(pole);
+ const wire=(a,b)=>{const pts=[];for(let i=0;i<=16;i++){const t=i/16,p=a.clone().lerp(b,t);p.y-=Math.sin(t*Math.PI)*.45;pts.push(p)}const g=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.022,5);const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x23221f}));scene.add(m)};
+ const hp=L(7.6,6.4);wire(top,new THREE.Vector3(hp.x,7.0,hp.z));
+ const stub=(q)=>{const y=h(q.x,q.z),m=new THREE.Mesh(new THREE.CylinderGeometry(.08,.13,7,8),mat.poleWood);m.position.set(q.x,y+3.5,q.z);m.castShadow=true;scene.add(m)};
+ const e1=P(800,548);wire(top,new THREE.Vector3(e1.x,h(e1.x,e1.z)+7,e1.z));stub(e1);
+ const n1=P(645,240);wire(top,new THREE.Vector3(n1.x,h(n1.x,n1.z)+7,n1.z));stub(n1);
+}
+
+// ---------- orchard leftovers: brush pile, sheets, firewood, sapling, and the car for scale ----------
+{
+ const place=(px,py)=>{const c=P(px,py);return new THREE.Vector3(c.x,h(c.x,c.z),c.z)};
+ // car, length 4.3 m, parked on the new gravel
+ const c=P(692,528),y=h(c.x,c.z);const G=new THREE.Group();G.position.set(c.x,y,c.z);G.rotation.y=PLOT;scene.add(G);
+ const body=M({color:0x2b2e33,roughness:.4,metalness:.25});box(G,-2.15,2.15,.34,1.0,-.9,.9,body);box(G,-1.4,1.25,1.0,1.58,-.8,.8,body);box(G,-1.25,1.1,1.05,1.5,-.82,.82,mat.glass);
+ [[-1.35,-.92],[-1.35,.92],[1.35,-.92],[1.35,.92]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.24,14),mat.poleWood);w.position.set(x,.34,z);w.rotation.x=1.57;G.add(w)});
+}
+
+// ---------- tufts of grass for texture ----------
+{
+ const list=[];
+ for(let i=0;i<26000;i++){const px=rr(SLAB.x0+2,SLAB.x1-2),py=rr(SLAB.y0+2,SLAB.y1-2),c=P(px,py);const yardZone=px>320&&px<750&&py>580&&py<880;if(px>519&&px<592&&py>676&&py<778)continue;if(Math.hypot(px-OPT.seat.px,py-OPT.seat.py)<24)continue;if(OPT.ground.beds.some(b=>inPoly(b,px,py))||inPoly(OPT.ground.gravel,px,py))continue;if(px>430&&px<555&&py>655&&py<800)continue;
+   const hh=yardZone?rr(.1,.22):rr(.16,.42);const col=yardZone?['#4f7a30','#5c8638','#456c2a','#668c3e'][Math.floor(rnd()*4)]:['#6f8038','#7a8840','#878a46','#657636'][Math.floor(rnd()*4)];
+   list.push({p:new THREE.Vector3(c.x,h(c.x,c.z)+hh/2-.01,c.z),q:new THREE.Quaternion().setFromAxisAngle(up,rnd()*6),s:new THREE.Vector3(.09,hh,.09),c:col})}
+ instanced(new THREE.ConeGeometry(1,1,3),tuftMat,list,false).receiveShadow=false;
+}
+
+// ---------- scale bar laid on the south edge ----------
+[[SLAB.x0+18,SLAB.y1-12],[SLAB.x1-210,SLAB.y0+10]].forEach(([a,b])=>{const c0=P(a,b);const y=h(c0.x+10,c0.z)+.08;for(let i=0;i<4;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(5,.1,.5),i%2?mat.white:M({color:0x201e1b}));m.position.set(c0.x+2.5+i*5,y+.2,c0.z);m.castShadow=true;scene.add(m)}});
+
+// ---------- labels ----------
+const LAB=OPT.labels;
+const labelsEl=document.getElementById('labels'),linesEl=document.getElementById('lines');
+let curView='ne';
+LAB.forEach(l=>{const d=document.createElement('div');d.className='lab'+(l.small?' mini':'');d.innerHTML=l.t+(l.s?`<small>${l.s}</small>`:'');labelsEl.appendChild(d);l.el=d;const n=document.createElementNS('http://www.w3.org/2000/svg','line');n.setAttribute('stroke','rgba(44,42,36,.6)');n.setAttribute('stroke-width','1');linesEl.appendChild(n);l.ln=n;const o=document.createElementNS('http://www.w3.org/2000/svg','circle');o.setAttribute('r','2.2');o.setAttribute('fill','#2c2a24');linesEl.appendChild(o);l.dot=o});
+function placeLabels(){const W=innerWidth,H=innerHeight;
+ const on=LAB.filter(l=>{const show=!l.hide&&(!l.v||l.v.split(' ').includes(curView));l.el.style.display=show?'':'none';l.ln.style.display=show?'':'none';l.dot.style.display=show?'':'none';return show});
+ on.forEach(l=>{const c=P(l.px,l.py),v=new THREE.Vector3(c.x,h(c.x,c.z)+l.y,c.z).project(cam);l.sx=(v.x+1)/2*W;l.sy=(1-v.y)/2*H;const o=(l.ov&&l.ov[curView])||[l.dx,l.dy];l.lx=l.sx+o[0];l.ly=l.sy+o[1];l.w=l.el.offsetWidth+8;l.hh=l.el.offsetHeight+6});
+ // nudge overlapping labels apart, keeping them inside the frame
+ for(let it=0;it<60;it++){for(let i=0;i<on.length;i++)for(let j=i+1;j<on.length;j++){const a=on[i],b=on[j],ox=(a.w+b.w)/2-Math.abs(a.lx-b.lx),oy=(a.hh+b.hh)/2-Math.abs(a.ly-b.ly);if(ox>0&&oy>0){if(oy<ox){const s=(a.ly<b.ly?-1:1)*oy/2;a.ly+=s;b.ly-=s}else{const s=(a.lx<b.lx?-1:1)*ox/2;a.lx+=s;b.lx-=s}}}
+  on.forEach(l=>{l.lx=Math.max(l.w/2+6,Math.min(W-l.w/2-6,l.lx));l.ly=Math.max(l.hh/2+6,Math.min(H-l.hh/2-6,l.ly))})}
+ on.forEach(l=>{l.el.style.left=l.lx+'px';l.el.style.top=l.ly+'px';const none=l.dx===0&&l.dy===0&&Math.hypot(l.lx-l.sx,l.ly-l.sy)<4;l.ln.setAttribute('x1',l.sx);l.ln.setAttribute('y1',l.sy);l.ln.setAttribute('x2',l.lx);l.ln.setAttribute('y2',l.ly);l.ln.style.display=none?'none':'';l.dot.setAttribute('cx',l.sx);l.dot.setAttribute('cy',l.sy);l.dot.style.display=none?'none':''});
+ const v0=new THREE.Vector3(0,0,0).project(cam),v1=new THREE.Vector3(0,0,-10).project(cam);const a=Math.atan2((v1.x-v0.x)*W,(v1.y-v0.y)*H)*180/Math.PI;document.getElementById('northG').setAttribute('transform',`rotate(${a})`)}
+// ---------- views: true isometric elevation 35.264 degrees ----------
+const VIEW={hv:205,close:14,n:14,e:82,ne:40,se:128,sw:222,top:null};
+let span=Number(Q.get('span'))||72,curSpan=span;
+function setView(k){const d=260;curView=k;document.body.classList.toggle("closeview",k==="close"||k==="hv");curSpan=k==="close"?30:k==="hv"?20:k==="top"?82:span;
+ const t=centre.clone();if(k==="close"){const c=P(612,700);t.set(c.x,1,c.z)}if(k==="hv"){const c=P(358,478);t.set(c.x,2.2,c.z)}
+ if(k==="top"){cam.position.set(t.x,300,t.z+.01)}
+ else{const az=VIEW[k]*Math.PI/180,el=35.264*Math.PI/180;cam.position.set(t.x+Math.sin(az)*Math.cos(el)*d,t.y+Math.sin(el)*d,t.z-Math.cos(az)*Math.cos(el)*d)}
+ ctl.target.copy(t);cam.lookAt(t);ctl.update();resize()}
+function resize(){const W=innerWidth,H=innerHeight;renderer.setSize(W,H,false);const a=W/H,fh=curSpan;cam.left=-fh*a/2;cam.right=fh*a/2;cam.top=fh/2;cam.bottom=-fh/2;cam.updateProjectionMatrix();draw()}
+function draw(){renderer.render(scene,cam);placeLabels()}
+addEventListener('resize',resize);ctl.addEventListener('change',draw);
+document.querySelectorAll('#views button[data-v]').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+document.getElementById('tl').onclick=()=>document.body.classList.toggle('nolabels');
+// ---------- seasonal plants: every leaf and flower clump is one instance, recoloured per season ----------
+const leafItems=[],bladeItems=[],branchList=[];
+const addItem=(arr,p,q,s,shade,pal,v)=>arr.push({p,q,s,shade,pal,u:rnd(),v:v===undefined?rnd():v,k:rnd()});
+function tree(o){
+  const {px,py,form='round',pal}=o;const gr=(!o.form&&YEAR===20)?1.12:1,ht=o.ht*gr,wd=o.wd*gr;
+  const c=P(px,py),base=new THREE.Vector3(c.x,h(c.x,c.z)-.1,c.z);
+  const bh=o.bh??({round:.22,column:.1,vase:.03,shrub:.02,cone:.05}[form]);
+  const trunk=o.trunk||Math.max(.035,wd*.026+ht*.006);
+  const leaves=o.leaves||Math.round(55*(wd*wd+ht*wd));
+  const lr=o.leafR||(form==='shrub'?[.07,.15]:form==='column'?[.09,.2]:[.1,.23]);
+  const depth=o.depth||(form==='shrub'?2:ht>6?4:3),fill=o.fill??.8;
+  const cy=base.y+bh*ht+(ht*(1-bh))/2,ry=ht*(1-bh)/2,rx=wd/2,tips=[];
+  const fork=(a,dir,len,r,d)=>{
+    const b=a.clone().addScaledVector(dir,len);
+    const e=new THREE.Vector3((b.x-c.x)/rx,(b.y-cy)/ry,(b.z-c.z)/rx);
+    if(e.length()>1.03)b.addScaledVector(dir,-len*.45);
+    branchList.push({a,b,r});
+    if(d===0){tips.push(b);return}
+    const n=rnd()<.35?3:2;
+    for(let i=0;i<n;i++){const nd=dir.clone().add(new THREE.Vector3(rr(-.8,.8),rr(-.18,.55),rr(-.8,.8))).normalize();fork(b,nd,len*rr(.62,.8),r*.62,d-1)}
+  };
+  if(form==='cone'){
+    branchList.push({a:base,b:base.clone().add(new THREE.Vector3(0,ht*.97,0)),r:trunk*1.2});
+    for(let i=0;i<leaves;i++){const t=Math.pow(rnd(),1.25),a=rnd()*6.283,R=(1-t)*rx*Math.sqrt(rnd())*(1+.12*Math.sin(t*38));
+      const p=new THREE.Vector3(c.x+Math.cos(a)*R,base.y+ht*(.05+.95*t),c.z+Math.sin(a)*R);const r=rr(.09,.2);
+      addItem(leafItems,p,new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*3,rnd()*3,rnd()*3)),new THREE.Vector3(r,r*.6,r),.72+.42*t,pal)}
+    return}
+  const multi=form==='vase'||form==='shrub',mains=o.mains||(multi?6:form==='column'?6:5);
+  const tr=multi?base:base.clone().add(new THREE.Vector3(rr(-.15,.15),bh*ht,rr(-.15,.15)));
+  if(!multi)branchList.push({a:base,b:tr,r:trunk});
+  for(let i=0;i<mains;i++){const t=i/mains*6.283+rr(-.3,.3);
+    const dir=multi?new THREE.Vector3(Math.cos(t)*rr(.25,.6),rr(.9,1.2),Math.sin(t)*rr(.25,.6)).normalize():form==='column'?new THREE.Vector3(Math.cos(t)*.22,1,Math.sin(t)*.22).normalize():new THREE.Vector3(Math.cos(t)*rr(.45,.85),rr(.55,1),Math.sin(t)*rr(.45,.85)).normalize();
+    fork(tr,dir,ht*(multi?.34:.24),multi?trunk*.8:trunk*.55,depth)}
+  if(!multi)branchList.push({a:tr,b:tr.clone().add(new THREE.Vector3(0,ht*.45,0)),r:trunk*.5});
+  const lobes=[];const nL=o.lobes||Math.round(7+wd*.7);for(let i=0;i<nL;i++){const t=rnd()*6.283,u=rr(-.45,.95),s=Math.sqrt(1-u*u),R=rr(.5,.72);lobes.push({c:new THREE.Vector3(Math.cos(t)*s*R,u*R,Math.sin(t)*s*R),r:rr(.3,.46)})}
+  for(let i=0;i<leaves;i++){
+    let p;
+    if(rnd()<fill){const L=lobes[Math.floor(rnd()*lobes.length)];let e;do{e=new THREE.Vector3(rr(-1,1),rr(-1,1),rr(-1,1))}while(e.length()>1);
+      e.normalize().multiplyScalar(Math.pow(rnd(),.45)*L.r).add(L.c);
+      p=new THREE.Vector3(c.x+e.x*rx,cy+e.y*ry,c.z+e.z*rx)}
+    else{const t=tips[Math.floor(rnd()*tips.length)];p=t.clone().add(new THREE.Vector3(rr(-.6,.6),rr(-.4,.4),rr(-.6,.6)))}
+    const r=rr(lr[0],lr[1]),shade=.62+.52*(p.y-base.y)/ht;
+    addItem(leafItems,p,new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*3,rnd()*3,rnd()*3)),new THREE.Vector3(r,r*.72,r),shade,pal);
+  }
+}
+// trees that already stand on the plot: their autumn colours come from the photos, the other seasons are ordinary greens
+const EX=(autumn,o={})=>({spring:{c:['#7fa84a','#8fb454','#6d9a40'],f:[],ff:0,d:1},summer:{c:o.summer||['#3f6a2c','#4a7630','#355e28'],f:[],ff:0,d:1},autumn:{c:autumn,f:[],ff:0,d:o.autumnD??1},winter:{c:['#000000'],f:[],ff:0,d:0}});
+tree({px:338,py:695,ht:13.5,wd:14,trunk:.4,pal:EX(['#d9ac1e','#e6bf2e','#c99a18','#efcc44','#b98f22']),leaves:15000,leafR:[.09,.2],fill:.8,depth:5,bh:.2});
+tree({px:640,py:852,ht:16,wd:14.5,trunk:.52,pal:EX(['#2a4a26','#34582a','#3f6530','#6c7a2c','#8d8a30'],{summer:['#2a4a26','#34582a','#223f22']}),leaves:19000,leafR:[.16,.34],fill:.86,depth:5,bh:.17});
+tree({px:722,py:715,ht:14.5,wd:10,trunk:.34,pal:EX(['#a88f3a','#7a6a30','#8a7a34'],{autumnD:.2}),leaves:7000,leafR:[.12,.26],fill:.75,depth:5,bh:.3,mains:4});
+const neighbour=['#8f8a34','#74782f','#a08c34','#5d7030'];
+[[775,600,10,7],[782,690,9,6.5],[790,520,8,6],[785,782,10,7]].forEach(t=>tree({px:t[0],py:t[1],ht:t[2],wd:t[3],trunk:.2,pal:EX(neighbour),leaves:3200,leafR:[.15,.3],depth:3}));
+for(let i=0;i<13;i++){const px=rr(395,610),py=rr(899,915);tree({px,py,ht:rr(3,5),wd:rr(2.6,4),trunk:.07,pal:EX(neighbour),leaves:520,leafR:[.12,.22],depth:2,mains:3})}
+[[352,818,6.5,4.4],[395,835,5.4,3.6],[333,860,7.5,5],[340,905,6.5,4.4]].forEach(t=>tree({px:t[0],py:t[1],ht:t[2],wd:t[3],trunk:.1,pal:EX(['#7a8a36','#5d7030','#8a8434']),leaves:1100,leafR:[.1,.2],depth:3,mains:3}));
+[[285,300,5.5,3.6],[315,282,7,3.6],[360,276,6.5,3.4],[415,272,8.5,4],[470,268,9,4.8],[272,400,5,3.4],[280,500,4.6,3.2]].forEach(t=>tree({px:t[0],py:t[1],ht:t[2],wd:t[3],trunk:.1,pal:EX(['#6a7a30','#4e6a2c','#8c8a30']),leaves:1100,leafR:[.1,.2],depth:3,mains:3}));
+// the new planting
+OPT.plants.concat(OPT.fruit).forEach(([k,px,py])=>{const d=OPT.sp[k];tree({px:px+rr(-1.5,1.5),py:py+rr(-1.5,1.5),ht:(YEAR===20?d.ht20:d.ht)*rr(.92,1.06),wd:(YEAR===20?d.wd20:d.wd)*rr(.94,1.05),form:d.form,pal:d.pal,mains:d.kind==='fruit'?4:undefined,fill:d.kind==='fruit'?.85:undefined})});
+// perennials and bulbs as patches of low clumps or grass blades
+OPT.drifts.forEach(dr=>{const d=OPT.sp[dr.sp],A=dr.shape==='ring'?(dr.a1-dr.a0)/2*(dr.r1*dr.r1-dr.r0*dr.r0):dr.shape==='rect'?4*dr.rx*dr.ry:Math.PI*dr.rx*dr.ry;const n=Math.round(A/(PX_PER_M*PX_PER_M)*d.dens);
+  const co=Math.cos(dr.rot||0),si=Math.sin(dr.rot||0);
+  for(let i=0;i<n;i++){let x,y;
+    if(dr.shape==='ring'){const a=rr(dr.a0,dr.a1),r=Math.sqrt(rr(dr.r0*dr.r0,dr.r1*dr.r1));x=dr.px+Math.cos(a)*r;y=dr.py+Math.sin(a)*r}
+    else{let a,b;if(dr.shape==='rect'){a=rr(-dr.rx,dr.rx);b=rr(-dr.ry,dr.ry)}else{const t=rnd()*6.283,r=Math.sqrt(rnd())*(1+.1*Math.sin(t*5));a=Math.cos(t)*r*dr.rx;b=Math.sin(t)*r*dr.ry}x=dr.px+a*co-b*si;y=dr.py+a*si+b*co}
+    const c=P(x,y),g=h(c.x,c.z)+(dr.y||0);
+    if(d.form==='blade'){const t=rnd()*6.283,tilt=rr(.05,.5),l=d.ht*rr(.6,1.1);const dir=new THREE.Vector3(Math.cos(t)*Math.sin(tilt),Math.cos(tilt),Math.sin(t)*Math.sin(tilt));
+      addItem(bladeItems,new THREE.Vector3(c.x,g,c.z).addScaledVector(dir,l/2),new THREE.Quaternion().setFromUnitVectors(up,dir),new THREE.Vector3(.05,l,.03),rr(.85,1.1),d.pal)}
+    else{const f=rnd(),r=rr(.09,.17);addItem(leafItems,new THREE.Vector3(c.x,g+.05+f*d.ht,c.z),new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd()*3,rnd()*3,rnd()*3)),new THREE.Vector3(r,r*.8,r),.78+.36*f,d.pal,rnd()*(1.25-f))}
+  }});
+
+// ---------- fountain, set on a small level pad ----------
+{const f=OPT.fountain,c=P(f.px,f.py),y=h(c.x,c.z)+.2;const G=new THREE.Group();G.position.set(c.x,y,c.z);scene.add(G);G.rotation.y=PLOT;
+ const stone=M({color:0xc9c2ae}),water=M({color:0x4f9db8,roughness:.18,metalness:.1}),add=(g,m,yy)=>{const o=new THREE.Mesh(g,m);o.position.y=yy;o.castShadow=o.receiveShadow=true;G.add(o);return o};
+ if(f.style==='round'){add(new THREE.CylinderGeometry(1.75,1.85,.8,40),stone,-.32);add(new THREE.CylinderGeometry(.9,.95,.46,36),M({color:0xb8b09a}),.3);add(new THREE.CylinderGeometry(.78,.78,.03,32),water,.53)}
+ else{add(new THREE.BoxGeometry(3.4,.8,3.4),stone,-.32);add(new THREE.BoxGeometry(1.8,.46,1.8),M({color:0xb8b09a}),.3);add(new THREE.BoxGeometry(1.56,.03,1.56),water,.53)}
+ add(new THREE.CylinderGeometry(.09,.13,.62,12),stone,.8);add(new THREE.CylinderGeometry(.3,.1,.1,18),stone,1.12);
+ const jet=new THREE.MeshStandardMaterial({color:0xe6f4f8,roughness:.2,transparent:true,opacity:.85});
+ for(let i=0;i<8;i++){const a=i/8*6.283,pts=[];for(let k=0;k<=10;k++){const t=k/10;pts.push(new THREE.Vector3(Math.cos(a)*.62*t,1.16+.42*Math.sin(t*2.6)-.62*t*t,Math.sin(a)*.62*t))}
+  const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),14,.016,5),jet);G.add(m)}
+}
+
+// ---------- Scandic Standard modular home (Wall Concept): 5.7 m closed + 3 m covered terrace, 6.3 m deep ----------
+// Openings come from the maker's floor plan, turned 180 degrees so the terrace faces west. a runs east, b runs south.
+const homeG=new THREE.Group();
+{const o=OPT.home,c=P(o.px,o.py),A=o.w/2,B=o.d/2,wx=-A+o.terrace,E=o.hi,R=E+B*Math.tan(16*Math.PI/180),slope=(R-E)/B;
+ const at=(a,b)=>{const x=c.x+a*Math.cos(PLOT)+b*Math.sin(PLOT),z=c.z-a*Math.sin(PLOT)+b*Math.cos(PLOT);return h(x,z)};
+ const F=Math.max(at(-A,-B),at(-A,B),at(A,-B),at(A,B))+.35;
+ homeG.position.set(c.x,F,c.z);homeG.rotation.y=PLOT;scene.add(homeG);
+ const navy=M({color:0x1f2f45,roughness:.55}),wall=M({color:0xd9b681}),stope=M({color:0xc4c1b8}),under=M({color:0xc9ab7c});
+ const deckT=tex(256,256,(g,w,hh)=>{for(let y=0;y<hh;y+=32){const v=rr(-14,14);g.fillStyle=`rgb(${176+v},${142+v},${100+v})`;g.fillRect(0,y,w,30);g.fillStyle='rgba(50,34,20,.55)';g.fillRect(0,y+30,w,2)}});
+ const seamT=tex(128,64,(g,w,hh)=>{g.fillStyle='#2b3748';g.fillRect(0,0,w,hh);g.fillStyle='#46536a';g.fillRect(0,0,9,hh);g.fillStyle='#1b2533';g.fillRect(9,0,5,hh)});
+ const roofM=M({map:seamT,roughness:.5,metalness:.2}),deck=M({map:deckT});
+ // concrete footings: the floor stays level and the blocks take up the slope
+ [-A,wx,1.5,A].forEach(a=>[-B,B].forEach(b=>{box(homeG,a-.25,a+.25,at(a,b)-F-.15,-.12,b-.25,b+.25,stope)}));
+ [-1.05,1.05].forEach(b=>box(homeG,-A-.25,-A+.25,at(-A,b)-F-.15,-.12,b-.25,b+.25,stope));
+ // floor frame, closed part and terrace deck
+ box(homeG,-A,A,-.14,.02,-B,B,navy);box(homeG,-A+.05,wx,.02,.05,-B+.05,B-.05,deck,1.4);
+ box(homeG,wx,A,.02,E-.03,-B,B,wall);
+ // windows and the glass doors, positions from the floor plan
+ const glassY=(a0,a1,w,s,y0=.9,y1=2.1)=>{box(homeG,a0,a1,y0,y1,w-.03,w+.03,navy);box(homeG,a0+.07,a1-.07,y0+.07,y1-.07,w+s*.02,w+s*.05,mat.glass);box(homeG,(a0+a1)/2-.03,(a0+a1)/2+.03,y0,y1,w+s*.03,w+s*.07,navy)};
+ const glassX=(b0,b1,w,s,y0=.9,y1=2.1)=>{box(homeG,w-.03,w+.03,y0,y1,b0,b1,navy);box(homeG,w+s*.02,w+s*.05,y0+.07,y1-.07,b0+.07,b1-.07,mat.glass);box(homeG,w+s*.03,w+s*.07,y0,y1,(b0+b1)/2-.03,(b0+b1)/2+.03,navy)};
+ const sw=(a,b)=>a<b?[a,b]:[b,a];
+ const gy=(a0,a1,w,s)=>{const[p,q]=sw(a0,a1);glassY(p,q,w,s)};
+ gy(2.45,3.85,B,1);gy(-.65,.75,B,1);gy(.35,1.75,-B,-1);
+ glassX(1.25,2.55,A,1);glassX(.75,2.15,wx,-1);glassX(-2.15,-.85,wx,-1,.05,2.2);
+ // terrace posts and railing, with the opening at the entrance steps
+ [[-A,-B],[-A,-1.05],[-A,1.05],[-A,B],[wx,-B],[wx,B]].forEach(([a,b])=>box(homeG,a-.06,a+.06,.02,E,b-.06,b+.06,navy));
+ const rail=(a0,b0,a1,b1)=>{const L=Math.hypot(a1-a0,b1-b0),n=Math.round(L/.14);
+  const seg=(y,t)=>{if(a0===a1)box(homeG,a0-t,a0+t,y-t,y+t,Math.min(b0,b1),Math.max(b0,b1),navy);else box(homeG,Math.min(a0,a1),Math.max(a0,a1),y-t,y+t,b0-t,b0+t,navy)};
+  seg(1.05,.025);seg(.12,.02);
+  for(let i=1;i<n;i++){const t=i/n,a=a0+(a1-a0)*t,b=b0+(b1-b0)*t;box(homeG,a-.012,a+.012,.12,1.05,b-.012,b+.012,navy)}};
+ rail(-A,-B,wx,-B);rail(-A,B,wx,B);rail(-A,B,-A,-.9);rail(-A,-2.1,-A,-B);
+ {const g0=at(-A-.5,-1.5)-F;box(homeG,-A-.38,-A,g0-.1,g0+(.02-g0)*.66,-2.1,-.9,stope);box(homeG,-A-.76,-A-.38,g0-.1,g0+(.02-g0)*.33,-2.1,-.9,stope)}
+ // downpipes on the long walls, as in the photos
+ [[wx+.08,B+.05],[wx+.08,-B-.05],[A-.08,B+.05],[A-.08,-B-.05]].forEach(([a,b])=>box(homeG,a-.04,a+.04,.02,E,b-.04,b+.04,navy));
+ // ceiling over the terrace, gables and the standing-seam roof; the ridge runs along the long side
+ box(homeG,-A,wx,E-.12,E-.08,-B+.05,B-.05,under);box(homeG,-A,A,E-.17,E-.03,-B,-B+.08,navy);box(homeG,-A,A,E-.17,E-.03,B-.08,B,navy);box(homeG,-A,-A+.1,E-.17,E-.03,-B,B,navy);
+ const gable=a=>{const s=new THREE.Shape([new THREE.Vector2(-B,E),new THREE.Vector2(B,E),new THREE.Vector2(0,R)]);const m=new THREE.Mesh(new THREE.ShapeGeometry(s),new THREE.MeshStandardMaterial({color:0xcfa974,roughness:.9,side:THREE.DoubleSide}));m.rotation.y=Math.PI/2;m.position.x=a;m.castShadow=true;homeG.add(m)};
+ gable(A);gable(wx);gable(-A+.06);
+ const ov=.3,a0=-A-.14,a1=A+.14,ey=E-ov*slope,ru=(a1-a0)/.48;
+ [[1],[-1]].forEach(([s])=>{const e=B+ov;quad(homeG,[a0,ey,s*e],[a1,ey,s*e],[a1,R,0],[a0,R,0],roofM,ru,1);quad(homeG,[a1,ey,s*e],[a0,ey,s*e],[a0,R,0],[a1,R,0],roofM,ru,1)});
+ const beam=(p,q,r=.07)=>{const u=new THREE.Vector3(...p),v=new THREE.Vector3(...q),d=v.clone().sub(u),l=d.length();const m=new THREE.Mesh(new THREE.BoxGeometry(r*2,r*1.5,l),navy);m.position.copy(u).addScaledVector(d,.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.normalize());m.castShadow=true;homeG.add(m)};
+ [a0,a1].forEach(a=>[1,-1].forEach(s=>beam([a,ey,s*(B+ov)],[a,R,0])));
+ [1,-1].forEach(s=>beam([a0,ey,s*(B+ov)],[a1,ey,s*(B+ov)],.05));beam([a0,R+.02,0],[a1,R+.02,0],.06);
+}
+
+// ---------- coffee spot under the big tree: round table and two chairs ----------
+{const c=P(OPT.seat.px,OPT.seat.py),y=h(c.x,c.z);const G=new THREE.Group();G.position.set(c.x,y,c.z);scene.add(G);
+ const wood=M({color:0x7a5a3c});const add=(g,m,x,yy,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,yy,z);o.castShadow=true;G.add(o)};
+ add(new THREE.CylinderGeometry(.55,.55,.05,20),wood,0,.75,0);add(new THREE.CylinderGeometry(.05,.07,.75,8),mat.rail,0,.37,0);
+ [[-.95,.15],[.75,.6]].forEach(([x,z])=>{add(new THREE.BoxGeometry(.5,.05,.5),wood,x,.46,z);add(new THREE.BoxGeometry(.5,.5,.05),wood,x,.7,z+.25);[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].forEach(([a,b])=>add(new THREE.BoxGeometry(.04,.46,.04),mat.rail,x+a,.23,z+b))})}
+
+// ---------- flush the instanced plants ----------
+const barkMat=M({color:0x4a3c2d});segs(branchList,barkMat);
+const leafGeoS=new THREE.IcosahedronGeometry(1,0);{const p=leafGeoS.attributes.position,n=leafGeoS.attributes.normal,v=new THREE.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).normalize();n.setXYZ(i,v.x,v.y,v.z)}}
+const groups=[];
+function flush(items,geo,shadow){if(!items.length)return;const im=new THREE.InstancedMesh(geo,M({roughness:.85}),items.length);const mArr=new Float32Array(items.length*16);
+  items.forEach((it,i)=>{_m.compose(it.p,it.q,it.s);_m.toArray(mArr,i*16)});
+  im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(items.length*3),3);im.castShadow=shadow;im.receiveShadow=true;im.frustumCulled=false;scene.add(im);groups.push({im,items,mArr})}
+flush(leafItems,leafGeoS,true);flush(bladeItems,new THREE.ConeGeometry(1,1,4),false);
+const rgbCache=new Map();const rgb=hex=>{let v=rgbCache.get(hex);if(!v){_c.set(hex);v=[_c.r,_c.g,_c.b];rgbCache.set(hex,v)}return v};
+const TINT={spring:[.98,1.1,.82],summer:[.92,1.04,.82],autumn:[1,.98,.86],winter:[.98,.9,.78]};
+const SKY={spring:1.3,summer:1.25,autumn:1.25,winter:1.15};
+let curSeason='autumn';
+function setSeason(k){curSeason=k;
+  groups.forEach(({im,items,mArr})=>{const M_=im.instanceMatrix.array,C=im.instanceColor.array;
+    for(let i=0;i<items.length;i++){const it=items[i],sp=it.pal[k];
+      if(it.u>sp.d){for(let j=0;j<16;j++)M_[i*16+j]=0;continue}
+      for(let j=0;j<16;j++)M_[i*16+j]=mArr[i*16+j];
+      const isF=sp.f.length&&it.v<sp.ff,a=isF?sp.f:sp.c,v=rgb(a[Math.floor(it.k*a.length)]),sh=isF?Math.max(it.shade,.95):it.shade;
+      C[i*3]=v[0]*sh;C[i*3+1]=v[1]*sh;C[i*3+2]=v[2]*sh}
+    im.instanceMatrix.needsUpdate=true;im.instanceColor.needsUpdate=true});
+  const t=TINT[k];groundMat.color.setRGB(t[0],t[1],t[2]);tuftMat.color.setRGB(t[0],t[1],t[2]);
+  renderer.shadowMap.needsUpdate=true;
+  document.querySelectorAll('#seasons button').forEach(b=>b.classList.toggle('on',b.dataset.s===k));
+  const n=OPT.now[k]||[];document.getElementById('nowT').innerHTML=n.map(x=>`<span title="${x[1]}"><i style="background:${x[2]}"></i>${x[0]}</span>`).join('');
+  draw()}
+document.querySelectorAll('#years button').forEach(b=>{b.classList.toggle('on',Number(b.dataset.y)===YEAR);b.onclick=()=>{Q.set('year',b.dataset.y);Q.set('season',curSeason);Q.set('view',curView);location.search=Q.toString()}});
+document.getElementById('yr').textContent=YEAR;
+document.querySelectorAll('#seasons button').forEach(b=>b.onclick=()=>setSeason(b.dataset.s));
+function setHome(on){homeG.visible=on;LAB.forEach(l=>{if(l.home)l.hide=!on});renderer.shadowMap.needsUpdate=true;document.getElementById('hm').classList.toggle('on',on);draw()}
+document.getElementById('hm').onclick=()=>setHome(!homeG.visible);
+renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
+
+setView(Q.get('view')||'n');
+setSeason(Q.get('season')||'autumn');
+if(Q.get('home')==='0')setHome(false);else setHome(true);
+window.__ready=true;
+</script>
+</body>
+</html>
